@@ -1,0 +1,26 @@
+{
+  "name": "simplia-agent-chat-external-consumer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node smoke.mjs"
+  },
+  "dependencies": {
+    "@simplia/agent-chat-core": "file:../../.artifacts/packs/simplia-agent-chat-core-0.1.0.tgz",
+    "@simplia/agent-chat-adapter-acv2": "file:../../.artifacts/packs/simplia-agent-chat-adapter-acv2-0.1.0.tgz",
+    "@simplia/agent-chat-react": "file:../../.artifacts/packs/simplia-agent-chat-react-0.1.0.tgz",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "@simplia/agent-chat-core": "file:../../.artifacts/packs/simplia-agent-chat-core-0.1.0.tgz"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "simplia-agent-chat",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Composable, provider-neutral agent chat runtime and React UI.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gruia-app/simplia-agent-chat.git"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "build": "pnpm -r --workspace-concurrency=1 run build",
+    "typecheck": "pnpm run build && pnpm -r --workspace-concurrency=1 run typecheck",
+    "test": "pnpm -r --workspace-concurrency=1 run test",
+    "test:consumer": "node scripts/external-consumer-smoke.mjs",
+    "pack:check": "node scripts/pack-check.mjs",
+    "check": "pnpm run typecheck && pnpm run test && pnpm run pack:check && pnpm run test:consumer",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm run check && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "3.0.0"
+  }
+}

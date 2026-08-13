@@ -1,0 +1,49 @@
+:root {
+  --lab-bg: #050505;
+  --lab-panel: #090909;
+  --lab-panel-hover: #111111;
+  --lab-panel-active: #0c1627;
+  --lab-border: #27272a;
+  --lab-border-strong: #3f3f46;
+  --lab-text: #d4d4d8;
+  --lab-text-strong: #f4f4f5;
+  --lab-muted: #a1a1aa;
+  --lab-blue: #3b82f6;
+  --lab-blue-strong: #1d4ed8;
+  --lab-blue-text: #93c5fd;
+  --lab-green: #22c55e;
+  --lab-green-bg: #07140c;
+  --lab-green-text: #86efac;
+  --lab-amber: #f59e0b;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--lab-text);
+  background: var(--lab-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  padding: 1.5rem;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+@media (max-width: 640px) {
+  body {
+    padding: 0;
+  }
+}
