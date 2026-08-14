@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import type { ChatState, JsonValue, PendingInteraction, SurfaceActionRef, SurfaceBlock } from "simplia-agent-chat/core";
+import type { ChatState, ChatItem, JsonValue, PendingInteraction, SurfaceActionRef, SurfaceBlock } from "simplia-agent-chat/core";
 import { type ChatComposerProps } from "./ChatComposer.js";
 import { ReactSurfaceRegistry } from "./surface-registry.js";
 export interface AgentChatShellProps {
@@ -15,6 +15,10 @@ export interface AgentChatShellProps {
     composerPlaceholder?: string | undefined;
     busy?: boolean | undefined;
     toolbar?: ReactNode | undefined;
+    contextRail?: ReactNode | undefined;
+    emptyLabel?: string | undefined;
+    composer?: ReactNode | undefined;
+    renderMessage?: ((item: ChatItem) => ReactNode) | undefined;
 }
-export declare function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy, toolbar, }: AgentChatShellProps): import("react").JSX.Element;
+export declare function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy, toolbar, contextRail, emptyLabel, composer, renderMessage, }: AgentChatShellProps): import("react").JSX.Element;
 //# sourceMappingURL=AgentChatShell.d.ts.map

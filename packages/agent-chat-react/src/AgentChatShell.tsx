@@ -3,6 +3,7 @@
 import { useMemo, type ReactNode } from "react";
 import type {
   ChatState,
+  ChatItem,
   JsonValue,
   PendingInteraction,
   SurfaceActionRef,
@@ -27,6 +28,10 @@ export interface AgentChatShellProps {
   composerPlaceholder?: string | undefined;
   busy?: boolean | undefined;
   toolbar?: ReactNode | undefined;
+  contextRail?: ReactNode | undefined;
+  emptyLabel?: string | undefined;
+  composer?: ReactNode | undefined;
+  renderMessage?: ((item: ChatItem) => ReactNode) | undefined;
 }
 
 export function AgentChatShell({
@@ -42,6 +47,10 @@ export function AgentChatShell({
   composerPlaceholder,
   busy = false,
   toolbar,
+  contextRail,
+  emptyLabel,
+  composer,
+  renderMessage,
 }: AgentChatShellProps) {
   const interactions = useMemo(
     () => Object.values(state.interactions).filter((interaction) => interaction.threadId === threadId),
@@ -76,12 +85,15 @@ export function AgentChatShell({
         </div>
         <div className="sac-toolbar">{toolbar}</div>
       </header>
+      {contextRail ? <div className="sac-context-rail">{contextRail}</div> : null}
       <div className="sac-chat-stage">
         <div className="sac-scroll-region" ref={follow.containerRef} onScroll={follow.onScroll} tabIndex={0}>
           <ChatTimeline
             state={state}
             threadId={threadId}
             surfaceRegistry={surfaceRegistry}
+            {...(emptyLabel ? { emptyLabel } : {})}
+            {...(renderMessage ? { renderMessage } : {})}
             {...(onSurfaceAction ? { onSurfaceAction } : {})}
           />
         </div>
@@ -93,12 +105,14 @@ export function AgentChatShell({
       </div>
       <div className="sac-input-rail">
         <PendingInteractions interactions={interactions} onResolve={onResolveInteraction} />
-        <ChatComposer
-          onSubmit={onSubmit}
-          ariaLabel={composerAriaLabel}
-          {...(composerPlaceholder ? { placeholder: composerPlaceholder } : {})}
-          busy={busy}
-        />
+        {composer ?? (
+          <ChatComposer
+            onSubmit={onSubmit}
+            ariaLabel={composerAriaLabel}
+            {...(composerPlaceholder ? { placeholder: composerPlaceholder } : {})}
+            busy={busy}
+          />
+        )}
       </div>
     </section>
   );

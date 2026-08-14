@@ -10,14 +10,14 @@ function stringifyDetail(value) {
         return value;
     return JSON.stringify(value, null, 2);
 }
-function ItemRow({ item }) {
+function ItemRow({ item, renderMessage }) {
     const text = item.text?.trim();
     const detail = stringifyDetail(item.output ?? item.input);
     const label = item.role === "user" ? "You" : item.title ?? item.toolName ?? item.kind;
     const messageLike = item.kind === "message" || item.kind === "reasoning" || item.kind === "system";
-    return (_jsxs("article", { className: `sac-item sac-item-${item.role ?? item.kind}`, "aria-label": `${label}, ${item.status}`, children: [_jsxs("div", { className: "sac-item-meta", children: [_jsx("span", { children: label }), _jsx("span", { className: `sac-status sac-status-${item.status}`, children: item.status })] }), text ? _jsx("p", { className: messageLike ? "sac-message-text" : "sac-work-title", children: text }) : null, !messageLike && detail ? (_jsxs("details", { className: "sac-work-detail", children: [_jsx("summary", { children: "Inspect details" }), _jsx("pre", { children: detail })] })) : null] }));
+    return (_jsxs("article", { className: `sac-item sac-item-${item.role ?? item.kind}`, "aria-label": `${label}, ${item.status}`, children: [_jsxs("div", { className: "sac-item-meta", children: [_jsx("span", { children: label }), _jsx("span", { className: `sac-status sac-status-${item.status}`, children: item.status })] }), text ? (_jsx("div", { className: messageLike ? "sac-message-text" : "sac-work-title", children: messageLike && renderMessage ? renderMessage(item) : text })) : null, !messageLike && detail ? (_jsxs("details", { className: "sac-work-detail", children: [_jsx("summary", { children: "Inspect details" }), _jsx("pre", { children: detail })] })) : null] }));
 }
-export function ChatTimeline({ state, threadId, surfaceRegistry, onSurfaceAction, emptyLabel = "No messages yet. Send a precise instruction to begin.", }) {
+export function ChatTimeline({ state, threadId, surfaceRegistry, onSurfaceAction, emptyLabel = "No messages yet. Send a precise instruction to begin.", renderMessage, }) {
     const turns = useMemo(() => selectThreadTurns(state, threadId), [state, threadId]);
     const surfacesByTurn = useMemo(() => {
         const next = new Map();
@@ -32,6 +32,6 @@ export function ChatTimeline({ state, threadId, surfaceRegistry, onSurfaceAction
     if (turns.length === 0 && (surfacesByTurn.get("thread")?.length ?? 0) === 0) {
         return _jsx("div", { className: "sac-empty", children: emptyLabel });
     }
-    return (_jsxs("div", { className: "sac-timeline", role: "log", "aria-live": "off", "aria-relevant": "additions text", "aria-atomic": "false", "aria-label": "Conversation activity", children: [(surfacesByTurn.get("thread") ?? []).map((surface) => (_jsx(SurfaceHost, { block: surface, registry: surfaceRegistry, ...(onSurfaceAction ? { onAction: onSurfaceAction } : {}) }, surface.id))), turns.map((turn) => (_jsxs("section", { className: "sac-turn", "aria-label": `Turn ${turn.status}`, children: [selectTurnItems(state, turn.id).map((item) => (_jsx(ItemRow, { item: item }, item.id))), (surfacesByTurn.get(turn.id) ?? []).map((surface) => (_jsx(SurfaceHost, { block: surface, registry: surfaceRegistry, ...(onSurfaceAction ? { onAction: onSurfaceAction } : {}) }, surface.id)))] }, turn.id)))] }));
+    return (_jsxs("div", { className: "sac-timeline", role: "log", "aria-live": "off", "aria-relevant": "additions text", "aria-atomic": "false", "aria-label": "Conversation activity", children: [(surfacesByTurn.get("thread") ?? []).map((surface) => (_jsx(SurfaceHost, { block: surface, registry: surfaceRegistry, ...(onSurfaceAction ? { onAction: onSurfaceAction } : {}) }, surface.id))), turns.map((turn) => (_jsxs("section", { className: "sac-turn", "aria-label": `Turn ${turn.status}`, children: [selectTurnItems(state, turn.id).map((item) => (_jsx(ItemRow, { item: item, ...(renderMessage ? { renderMessage } : {}) }, item.id))), (surfacesByTurn.get(turn.id) ?? []).map((surface) => (_jsx(SurfaceHost, { block: surface, registry: surfaceRegistry, ...(onSurfaceAction ? { onAction: onSurfaceAction } : {}) }, surface.id)))] }, turn.id)))] }));
 }
 //# sourceMappingURL=ChatTimeline.js.map

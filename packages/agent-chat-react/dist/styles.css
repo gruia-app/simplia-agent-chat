@@ -262,6 +262,11 @@
   align-items: stretch;
 }
 
+.sac-context-rail {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--sac-border);
+}
+
 .sac-interaction p.sac-interaction-confirm-choice {
   flex-basis: 100%;
   margin: 0 0 0.2rem;

@@ -7,6 +7,7 @@ import { Window } from "happy-dom";
 import {
   beginInteractionResolution,
   cancelApprovalConfirmation,
+  AgentChatShell,
   ChatComposer,
   ChatTimeline,
   createInteractionResolutionState,
@@ -26,7 +27,11 @@ const emptyState = {
   items: {},
   surfaces: {},
   interactions: {},
-  eventCursorByThread: {},
+  usageByThread: {},
+  streamSequences: {},
+  seenEventIds: [],
+  resyncRequests: {},
+  warnings: [],
 };
 
 async function withDom(run) {
@@ -69,6 +74,66 @@ test("composer exposes its application-specific aria label", () => {
   assert.match(html, /aria-label="Message the ACV2 release agent"/);
   assert.match(html, /Shift\+Enter/);
   assert.match(html, /type="submit"/);
+});
+
+test("shell exposes generic context rail and application-specific empty copy", () => {
+  const html = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: emptyState,
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      contextRail: createElement("nav", { "aria-label": "Context actions" }, "Context rail"),
+      emptyLabel: "Ask about this application.",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+
+  assert.match(html, /class="sac-context-rail"/);
+  assert.match(html, /aria-label="Context actions"/);
+  assert.match(html, /Ask about this application\./);
+});
+
+test("shell accepts an application composer and message renderer without forking the timeline", () => {
+  const state = {
+    ...emptyState,
+    threads: {
+      [threadId]: { id: threadId, status: "idle" },
+    },
+    turns: {
+      "turn-1": { id: "turn-1", threadId, status: "completed", itemIds: ["message-1"] },
+    },
+    items: {
+      "message-1": {
+        id: "message-1",
+        threadId,
+        turnId: "turn-1",
+        kind: "message",
+        role: "assistant",
+        status: "completed",
+        text: "Open C:/workspace/report.md",
+      },
+    },
+  };
+  const html = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state,
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      composer: createElement("div", { "data-app-composer": "attachments" }, "Voice and files"),
+      renderMessage: (item) => createElement("button", { type: "button" }, item.text),
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+
+  assert.match(html, /data-app-composer="attachments"/);
+  assert.match(html, /<button type="button">Open C:\/workspace\/report\.md<\/button>/);
+  assert.doesNotMatch(html, /<textarea/);
 });
 
 test("approval markup exposes confirmation and omits payload", () => {
