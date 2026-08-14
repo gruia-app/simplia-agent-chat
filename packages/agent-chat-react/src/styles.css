@@ -254,6 +254,27 @@
   font-size: 0.82rem;
 }
 
+.sac-interaction p.sac-interaction-confirm-hint {
+  color: var(--sac-amber-text);
+}
+
+.sac-interaction-confirm {
+  align-items: stretch;
+}
+
+.sac-interaction p.sac-interaction-confirm-choice {
+  flex-basis: 100%;
+  margin: 0 0 0.2rem;
+  color: var(--sac-text);
+  overflow-wrap: anywhere;
+}
+
+.sac-interaction p.sac-interaction-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--sac-red-text);
+}
+
 .sac-interaction-actions,
 .sac-answer-form > div {
   display: flex;

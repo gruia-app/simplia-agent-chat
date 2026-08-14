@@ -1,7 +1,7 @@
 import type { ChatState, SurfaceBlock } from "@simplia/agent-chat-core";
 import { createInitialChatState } from "@simplia/agent-chat-core/state";
 import { acv2ProviderCapabilities } from "@simplia/agent-chat-adapter-acv2";
-import { AgentChatShell, ReactSurfaceRegistry } from "@simplia/agent-chat-react";
+import { AgentChatShell, ReactSurfaceRegistry, SurfaceHost } from "@simplia/agent-chat-react";
 
 const state: ChatState = createInitialChatState();
 const registry = new ReactSurfaceRegistry();
@@ -17,7 +17,6 @@ const surface: SurfaceBlock = {
 };
 
 void provider;
-void surface;
 
 export const view = (
   <AgentChatShell
@@ -29,4 +28,8 @@ export const view = (
     onSubmit={() => undefined}
     onResolveInteraction={() => undefined}
   />
+);
+
+export const host = (
+  <SurfaceHost block={surface} registry={registry} />
 );

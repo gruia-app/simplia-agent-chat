@@ -37,8 +37,8 @@ test("Codex maps thread and turn lifecycle with native provider identity", () =>
     params: { threadId: "native-thread", turn: { id: "native-turn" } },
   });
   assert.equal(started.type, "turn.upsert");
-  assert.equal(started.turnId, "native-turn");
-  assert.equal(started.payload.id, "native-turn");
+  assert.equal(started.turnId, "thread-1:native-turn");
+  assert.equal(started.payload.id, "thread-1:native-turn");
   assert.equal(started.payload.status, "running");
   assert.deepEqual(started.payload.provider, {
     provider: "codex",
@@ -60,7 +60,7 @@ test("Codex maps thread and turn lifecycle with native provider identity", () =>
       params: { turn: { id: "native-turn", status: native }, error: native === "failed" ? "boom" : undefined },
     });
     assert.equal(completed.payload.status, expected, native);
-    assert.equal(completed.turnId, "native-turn");
+    assert.equal(completed.turnId, "thread-1:native-turn");
     if (native === "failed") assert.equal(completed.payload.error, "boom");
   }
 });
@@ -133,7 +133,7 @@ test("Codex maps all streaming delta methods and ignores empty deltas", () => {
       params: { turnId: "native-turn", itemId: `item-${sequence}`, delta: `${label}-${sequence}` },
     }, { sequence });
     assert.equal(event.type, "item.delta");
-    assert.equal(event.payload.itemId, `item-${sequence}`);
+    assert.equal(event.payload.itemId, `thread-1:item-${sequence}`);
     assert.equal(event.payload.delta, `${label}-${sequence}`);
     assert.equal(event.payload.field, field);
     sequence += 1;
@@ -151,7 +151,7 @@ test("Codex maps plan/diff surfaces with revisions", () => {
       params: { turnId: "native-turn", revision: 7, entries: [{ id: 1 }] },
     });
     assert.equal(event.type, "surface.upsert");
-    assert.equal(event.payload.id, `${kind}:native-turn`);
+    assert.equal(event.payload.id, `thread-1:${kind}:native-turn`);
     assert.equal(event.payload.kind, kind);
     assert.equal(event.payload.revision, 7);
     assert.deepEqual(event.payload.payload.entries, [{ id: 1 }]);
@@ -181,7 +181,7 @@ test("Codex maps approvals, questions, elicitation and resolution", () => {
       },
     }, { sequence: id });
     assert.equal(event.type, "interaction.requested");
-    assert.equal(event.payload.id, `codex-request:${id}`);
+    assert.equal(event.payload.id, `thread-1:codex-request:${id}`);
     assert.equal(event.payload.kind, kind, method);
     assert.deepEqual(event.payload.availableDecisions, ["accept", "decline"]);
     id += 1;
@@ -192,7 +192,7 @@ test("Codex maps approvals, questions, elicitation and resolution", () => {
     params: { requestId: 3 },
   });
   assert.equal(resolved.type, "interaction.resolved");
-  assert.equal(resolved.payload.interactionId, "codex-request:3");
+  assert.equal(resolved.payload.interactionId, "thread-1:codex-request:3");
   assert.equal(resolved.payload.resolvedAt, ISO);
 });
 
@@ -336,8 +336,61 @@ test("OpenAI-compatible fragmented tool calls accumulate identity, name and argu
     choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: "\"Madrid\"}" } }] }, finish_reason: "tool_calls" }],
   }, context({ sequence: 2 }));
   const state = replayChatEvents([...first, ...second]);
-  const item = state.items["tool:turn-1:0:0"];
+  const item = state.items["thread-1:tool:turn-1:0:0"];
   assert.equal(item.toolName, "weather");
   assert.deepEqual(item.input, { toolCallId: "call-1", arguments: "{\"city\":\"Madrid\"}" });
   assert.equal(item.status, "completed");
+});
+
+test("adapter entity ids are thread-scoped and deterministic", () => {
+  const nativeTurn = { method: "turn/started", params: { turn: { id: "native-turn" } } };
+  const first = only(codexAppServerAdapter, nativeTurn);
+  const second = only(codexAppServerAdapter, nativeTurn);
+  const otherThread = only(codexAppServerAdapter, nativeTurn, { threadId: "thread-2" });
+  assert.equal(first.payload.id, second.payload.id);
+  assert.equal(first.payload.id, "thread-1:native-turn");
+  assert.equal(otherThread.payload.id, "thread-2:native-turn");
+  assert.equal(first.payload.provider.nativeTurnId, "native-turn");
+
+  const itemInput = { method: "item/started", params: { item: { id: "item-9", type: "agentMessage" } } };
+  const itemA = only(codexAppServerAdapter, itemInput, { sequence: 9 });
+  const itemB = only(codexAppServerAdapter, itemInput, { threadId: "thread-2", sequence: 9 });
+  assert.equal(itemA.payload.id, "thread-1:item-9");
+  assert.equal(itemB.payload.id, "thread-2:item-9");
+  assert.equal(itemA.payload.metadata.nativeItemId, "item-9");
+  assert.notEqual(itemA.payload.turnId, "unknown");
+  assert.equal(itemA.payload.turnId, "thread-1:turn-1");
+
+  const missingIds = only(codexAppServerAdapter, {
+    method: "item/started",
+    params: { item: { type: "agentMessage" } },
+  }, { turnId: undefined, sequence: 4 });
+  assert.equal(missingIds.payload.id, "thread-1:codex-item:agentMessage:4");
+  assert.equal(missingIds.payload.turnId, "thread-1:turn");
+
+  const interaction = only(codexAppServerAdapter, {
+    id: 8,
+    method: "applyPatchApproval",
+    params: {},
+  }, { turnId: undefined, sequence: 8 });
+  assert.equal(interaction.payload.id, "thread-1:codex-request:8");
+  assert.equal(interaction.payload.turnId, "thread-1:turn");
+
+  const langChain = langChainAdapter.normalize({
+    mode: "messages",
+    data: [{ id: "ai-1", content: "hi", tool_calls: [{ id: "call-1", name: "search", args: {} }] }],
+  }, context({ threadId: "thread-2" }));
+  assert.equal(langChain[0].payload.itemId, "thread-2:ai-1");
+  assert.equal(langChain[1].payload.id, "thread-2:call-1");
+  assert.equal(langChain[1].payload.turnId, "thread-2:turn-1");
+  assert.equal(langChain[1].payload.metadata.nativeItemId, "call-1");
+
+  const openAi = createOpenAiCompatibleAdapter().normalize({
+    choices: [{ delta: { content: "x", tool_calls: [{ index: 0, id: "call-9", function: { name: "t", arguments: "{" } }] } }],
+  }, context({ threadId: "thread-2", turnId: undefined }));
+  assert.equal(openAi[0].payload.itemId, "thread-2:assistant:turn:0");
+  assert.equal(openAi[1].payload.id, "thread-2:tool:turn:0:0");
+  assert.equal(openAi[1].payload.turnId, "thread-2:turn");
+  assert.equal(openAi[1].payload.metadata.nativeItemId, "call-9");
+  assert.notEqual(openAi[1].payload.turnId, "unknown");
 });

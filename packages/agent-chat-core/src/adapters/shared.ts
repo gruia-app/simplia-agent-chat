@@ -43,3 +43,23 @@ export function providerFrom(input: unknown, fallback: string): ProviderMetadata
 export function stableSuffix(...parts: Array<string | number | undefined>): string {
   return parts.map((part) => String(part ?? "unknown").replace(/[^a-zA-Z0-9._:-]+/g, "_")).join(":");
 }
+
+export function scopeToThread(threadId: string, nativeId: string): string {
+  return nativeId === threadId || nativeId.startsWith(`${threadId}:`)
+    ? nativeId
+    : `${threadId}:${nativeId}`;
+}
+
+export function threadScopedTurnId(threadId: string, nativeTurnId?: string): string {
+  return nativeTurnId && nativeTurnId.trim()
+    ? scopeToThread(threadId, nativeTurnId.trim())
+    : `${threadId}:turn`;
+}
+
+export function threadScopedEntityId(
+  threadId: string,
+  nativeId: string | undefined,
+  fallback: string,
+): string {
+  return scopeToThread(threadId, nativeId && nativeId.trim() ? nativeId.trim() : fallback);
+}

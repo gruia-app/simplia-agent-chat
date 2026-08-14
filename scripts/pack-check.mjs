@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -42,5 +43,19 @@ for (const relative of packages) {
   if (relative.endsWith("agent-chat-react") && !files.has("dist/styles.css")) {
     throw new Error(`${relative}: missing dist/styles.css`);
   }
+
+  const license = readFileSync(path.join(cwd, "LICENSE"), "utf8");
+  if (/datadog/i.test(license)) {
+    throw new Error(`${relative}: packed LICENSE contains Datadog attribution`);
+  }
+  if (!license.includes("Copyright 2026 Simplia Agent Chat contributors.")) {
+    throw new Error(`${relative}: packed LICENSE missing Simplia copyright`);
+  }
+
+  const notice = readFileSync(path.join(cwd, "NOTICE"), "utf8");
+  if (!notice.includes("Simplia Agent Chat") || !notice.includes("Copyright 2026 Simplia Agent Chat contributors")) {
+    throw new Error(`${relative}: packed NOTICE missing Simplia ownership`);
+  }
+
   process.stdout.write(`${manifest.id}: ${manifest.entryCount} files, ${manifest.size} bytes\n`);
 }

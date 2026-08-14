@@ -6,17 +6,26 @@ Use an `AgentProviderPort` when the backend has durable sessions, tools, approva
 
 ## Normalize before rendering
 
-Provider SDK or transport events should pass through a `ChatTransportAdapter`. Persist or stream normalized `ChatEvent` envelopes, then reduce them with `reduceChatEvent`.
+Provider SDK or transport events should pass through a `ChatTransportAdapter`. Persist or stream normalized `ChatEvent` envelopes, validate them, then reduce them with `reduceChatEvent`.
 
 ```ts
+import { validateChatEvent } from "@simplia/agent-chat-core/protocol";
 import { reduceChatEvent, createInitialChatState } from "@simplia/agent-chat-core/state";
 import { codexAppServerAdapter } from "@simplia/agent-chat-core/adapters/codex";
 
 let state = createInitialChatState();
 for (const event of codexAppServerAdapter.normalize(notification, context)) {
-  state = reduceChatEvent(state, event).state;
+  const validated = validateChatEvent(event);
+  if (!validated.ok) continue;
+  state = reduceChatEvent(state, validated.event).state;
 }
 ```
+
+`reduceChatEvent` also validates unknown input. Failures return `invalid_event`, `unsupported_protocol` or `unknown_event_type` and leave entity state and seen event IDs unchanged.
+
+When replay cannot close a stream gap, send a `thread.snapshot` that includes `stream.id` and `stream.sequence` set to the recovered high-water mark. A recovery snapshot MUST carry that stream metadata; without it the snapshot cannot adopt the stream cursor or clear the resync request.
+
+Adapter-produced turn, item, surface and interaction IDs are scoped by thread. Preserve native provider IDs from `provider.nativeTurnId` / `provider.nativeThreadId` or item metadata instead of parsing the scoped identifier.
 
 ## Connect the React shell
 
@@ -54,6 +63,10 @@ For every approval or surface action, verify:
 ## ACV2
 
 Install `@simplia/agent-chat-adapter-acv2` and normalize durable PM/run events with `acv2PmAdapter`. The package also exposes the nine current provider profiles. Runtime capability discovery should override stale static assumptions, but never grant permission by itself.
+
+`acv2PmAdapter` scopes native run, message, tool, and fallback system IDs by `context.threadId` without double-scoping an already-prefixed identifier. Preserve native run and tool identity from `provider.nativeTurnId` / `provider.nativeThreadId` or item `metadata.nativeItemId` instead of parsing the scoped identifier.
+
+When a durable `cursor` is present, the adapter emits stream metadata. `stream.id` is the caller `context.streamId` when supplied, otherwise a deterministic per-thread, per-run stream ID. A sequence on the adapter context is not enough: without a cursor the adapter does not emit stream metadata. After a gap, send a `thread.snapshot` on that same stream with the recovered high-water mark so replay can continue.
 
 ## LangChain
 

@@ -60,7 +60,17 @@ Use reverse-domain-like application namespaces:
 
 ## Failure behavior
 
-Unknown schema versions and validation failures render a safe fallback. Raw untrusted payloads are not displayed. Renderer exceptions are caught by an error boundary and use the same fallback.
+`SurfaceHost` fails closed when:
+
+- no plugin is registered for the block kind or schema version;
+- `validate` throws;
+- `getA11yLabel` throws;
+- `summarize` throws;
+- the renderer throws.
+
+The built-in fallback may show only the surface kind, schema version and trusted `presentation.title`. It never renders the raw payload or exception text. Renderer exceptions stay inside the existing error boundary and use the same fallback.
+
+A custom `fallback` receives the original block, including payload. The host does not sanitize that argument. Applications that supply a custom fallback are responsible for payload safety and must not render raw unknown payloads or exception messages.
 
 ## Actions
 

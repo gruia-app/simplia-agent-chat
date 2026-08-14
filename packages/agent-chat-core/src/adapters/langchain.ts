@@ -6,7 +6,7 @@ import {
   type ChatEvent,
   type ChatTransportAdapter,
 } from "../protocol.js";
-import { event, stableSuffix } from "./shared.js";
+import { event, stableSuffix, threadScopedEntityId, threadScopedTurnId } from "./shared.js";
 
 export interface LangChainStreamInput {
   mode?: "updates" | "messages" | "custom" | "events";
@@ -38,31 +38,46 @@ export const langChainAdapter: ChatTransportAdapter<LangChainStreamInput> = {
     const events: ChatEvent[] = [];
     const provider = { provider: "langchain", raw: { mode } };
     const suffix = stableSuffix(context.sequence, mode, input.event, input.name, input.run_id);
+    const turnId = threadScopedTurnId(context.threadId, context.turnId);
+    const eventContext: AdapterContext = { ...context, turnId };
 
     if (mode === "messages") {
       const tuple = Array.isArray(data) ? data : [data];
       const message = recordValue(tuple[0]);
       const metadata = recordValue(tuple[1]);
       const content = messageParts(message.content) || stringValue(message.text) || "";
+      const nativeMessageId = stringValue(message.id);
       if (content) {
-        events.push(event("item.delta", context, suffix, {
-          itemId: stringValue(message.id) ?? `assistant:${context.turnId ?? context.threadId}`,
+        events.push(event("item.delta", eventContext, suffix, {
+          itemId: threadScopedEntityId(
+            context.threadId,
+            nativeMessageId,
+            `assistant:${context.turnId ?? "turn"}`,
+          ),
           delta: content,
         }, { ...provider, raw: { mode, metadata: jsonValue(metadata) } }));
       }
       const toolCalls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
       for (const [index, toolCallInput] of toolCalls.entries()) {
         const toolCall = recordValue(toolCallInput);
-        events.push(event("item.upsert", context, `${suffix}:tool:${index}`, {
-          id: stringValue(toolCall.id) ?? `tool:${context.turnId ?? context.threadId}:${index}`,
+        const nativeToolId = stringValue(toolCall.id);
+        events.push(event("item.upsert", eventContext, `${suffix}:tool:${index}`, {
+          id: threadScopedEntityId(
+            context.threadId,
+            nativeToolId,
+            `tool:${context.turnId ?? "turn"}:${index}`,
+          ),
           threadId: context.threadId,
-          turnId: context.turnId ?? "unknown",
+          turnId,
           kind: "tool",
           role: "tool",
           status: "streaming",
           toolName: stringValue(toolCall.name) ?? "tool",
           input: jsonValue(toolCall.args),
-          metadata: { langChainMode: mode },
+          metadata: {
+            langChainMode: mode,
+            ...(nativeToolId ? { nativeItemId: nativeToolId } : {}),
+          },
         }, provider));
       }
       return events;
@@ -79,17 +94,26 @@ export const langChainAdapter: ChatTransportAdapter<LangChainStreamInput> = {
           const isTool = type.toLowerCase().includes("tool");
           const text = messageParts(message.content) || stringValue(message.text);
           const toolName = stringValue(message.name);
-          events.push(event("item.upsert", context, `${suffix}:${nodeName}:${index}`, {
-            id: stringValue(message.id) ?? `langchain:${context.turnId ?? context.threadId}:${nodeName}:${index}`,
+          const nativeMessageId = stringValue(message.id);
+          events.push(event("item.upsert", eventContext, `${suffix}:${nodeName}:${index}`, {
+            id: threadScopedEntityId(
+              context.threadId,
+              nativeMessageId,
+              `langchain:${context.turnId ?? "turn"}:${nodeName}:${index}`,
+            ),
             threadId: context.threadId,
-            turnId: context.turnId ?? "unknown",
+            turnId,
             kind: isTool ? "tool" : "message",
             role: isTool ? "tool" : type.toLowerCase().includes("human") ? "user" : "assistant",
             status: "completed",
             ...(text ? { text } : {}),
             ...(toolName ? { toolName } : {}),
             ...(message.tool_calls !== undefined ? { output: jsonValue(message.tool_calls) } : {}),
-            metadata: { langChainNode: nodeName, langChainMode: mode },
+            metadata: {
+              langChainNode: nodeName,
+              langChainMode: mode,
+              ...(nativeMessageId ? { nativeItemId: nativeMessageId } : {}),
+            },
           }, provider));
         }
       }
@@ -97,10 +121,14 @@ export const langChainAdapter: ChatTransportAdapter<LangChainStreamInput> = {
     }
 
     if (mode === "custom") {
-      events.push(event("surface.upsert", context, suffix, {
-        id: `langchain.custom:${context.turnId ?? context.threadId}:${stableSuffix(input.name, context.sequence)}`,
+      events.push(event("surface.upsert", eventContext, suffix, {
+        id: threadScopedEntityId(
+          context.threadId,
+          undefined,
+          `langchain.custom:${context.turnId ?? "turn"}:${stableSuffix(input.name, context.sequence)}`,
+        ),
         threadId: context.threadId,
-        ...(context.turnId ? { turnId: context.turnId } : {}),
+        turnId,
         kind: stringValue(input.name) ?? "langchain.custom",
         schemaVersion: 1,
         revision: context.sequence ?? 1,
@@ -118,19 +146,23 @@ export const langChainAdapter: ChatTransportAdapter<LangChainStreamInput> = {
         Object.keys(nestedChunk).length > 0 ? nestedChunk.content : chunk.chunk ?? chunk.content,
       ) || stringValue(nestedChunk.text) || stringValue(chunk.text) || "";
       if (content) {
-        events.push(event("item.delta", context, suffix, {
-          itemId: `assistant:${context.turnId ?? context.threadId}`,
+        events.push(event("item.delta", eventContext, suffix, {
+          itemId: threadScopedEntityId(
+            context.threadId,
+            undefined,
+            `assistant:${context.turnId ?? "turn"}`,
+          ),
           delta: content,
         }, provider));
       }
     } else if (eventName.endsWith("_end")) {
-      events.push(event("turn.status", context, suffix, {
+      events.push(event("turn.status", eventContext, suffix, {
         status: "completed",
         completedAt: context.occurredAt ?? new Date().toISOString(),
       }, provider));
     } else if (eventName.endsWith("_error")) {
       const errorData = recordValue(data);
-      events.push(event("turn.status", context, suffix, {
+      events.push(event("turn.status", eventContext, suffix, {
         status: "failed",
         error: stringValue(errorData.message) ?? stringValue(data) ?? eventName,
       }, provider));

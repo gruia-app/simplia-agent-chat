@@ -15,10 +15,13 @@ The workflow builds and tests all packages, validates tarball contents, then pub
 ## Required repository configuration
 
 - public GitHub repository under the chosen owner;
-- npm scope ownership for `@simplia`;
 - protected `npm` GitHub environment;
 - `NPM_TOKEN` until trusted publishing is configured;
 - branch protection requiring CI on Node 20 and 22;
 - private vulnerability reporting enabled.
 
-The package names are currently unclaimed in the public npm registry. Availability is not ownership; confirm the `@simplia` scope before the first release.
+## Residual external release gates
+
+Ownership of the `@simplia` npm scope is an unresolved external requirement. This repository does not claim that ownership. Package-name availability in the public registry is not ownership. Confirm who owns `@simplia` and that these package names can be published there before the first release.
+
+The publish workflow keeps npm provenance (`id-token: write`) and the protected `npm` environment. `contents: write` is required so Changesets can push the release tag.

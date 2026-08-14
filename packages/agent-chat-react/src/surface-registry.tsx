@@ -73,11 +73,15 @@ export interface SurfaceHostProps {
   fallback?: ((block: SurfaceBlock, reason: "unknown" | "invalid") => ReactNode) | undefined;
 }
 
+function trustedPresentationTitle(block: SurfaceBlock): string {
+  return block.presentation?.title?.trim() || block.kind;
+}
+
 function SafeSurfaceFallback({ block, reason }: { block: SurfaceBlock; reason: "unknown" | "invalid" }) {
   return (
     <section className="sac-surface-fallback" aria-label={unknownSurfaceSummary(block)}>
       <span className="sac-eyebrow">SURFACE_UNAVAILABLE</span>
-      <strong>{block.presentation?.title ?? block.kind}</strong>
+      <strong>{trustedPresentationTitle(block)}</strong>
       <p>
         {reason === "invalid"
           ? "This surface payload did not pass its local schema."
@@ -87,26 +91,43 @@ function SafeSurfaceFallback({ block, reason }: { block: SurfaceBlock; reason: "
   );
 }
 
+function renderSafeFallback(
+  block: SurfaceBlock,
+  reason: "unknown" | "invalid",
+  fallback: SurfaceHostProps["fallback"],
+) {
+  return <>{fallback?.(block, reason) ?? <SafeSurfaceFallback block={block} reason={reason} />}</>;
+}
+
 export function SurfaceHost({ block, registry, onAction, fallback }: SurfaceHostProps) {
   let decoded: DecodedReactSurface | undefined;
   try {
     decoded = registry.decode(block);
   } catch {
-    return <>{fallback?.(block, "invalid") ?? <SafeSurfaceFallback block={block} reason="invalid" />}</>;
+    return renderSafeFallback(block, "invalid", fallback);
   }
 
   if (!decoded) {
-    return <>{fallback?.(block, "unknown") ?? <SafeSurfaceFallback block={block} reason="unknown" />}</>;
+    return renderSafeFallback(block, "unknown", fallback);
+  }
+
+  let a11yLabel: string;
+  let heading: string;
+  try {
+    a11yLabel = decoded.plugin.getA11yLabel(decoded.block.payload);
+    heading = decoded.block.presentation?.title ?? decoded.plugin.summarize(decoded.block.payload);
+  } catch {
+    return renderSafeFallback(block, "invalid", fallback);
   }
 
   const Renderer = decoded.plugin.component;
-  const invalidFallback = fallback?.(block, "invalid") ?? <SafeSurfaceFallback block={block} reason="invalid" />;
+  const invalidFallback = renderSafeFallback(block, "invalid", fallback);
   return (
-    <section className="sac-surface" aria-label={decoded.plugin.getA11yLabel(decoded.block.payload)}>
+    <section className="sac-surface" aria-label={a11yLabel}>
       <div className="sac-surface-heading">
         <div>
           <span className="sac-eyebrow">{decoded.block.kind}</span>
-          <strong>{decoded.block.presentation?.title ?? decoded.plugin.summarize(decoded.block.payload)}</strong>
+          <strong>{heading}</strong>
         </div>
         <span className={`sac-status sac-status-${decoded.block.status}`}>{decoded.block.status}</span>
       </div>

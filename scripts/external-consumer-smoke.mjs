@@ -1,4 +1,4 @@
-import { rmSync, mkdirSync } from "node:fs";
+import { copyFileSync, readdirSync, rmSync, mkdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -24,6 +24,21 @@ function run(args, cwd = root) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
+function stageGeneratedTarball(unscopedName) {
+  const prefix = `${unscopedName}-`;
+  const matches = readdirSync(destination).filter(
+    (file) => file.startsWith(prefix) && file.endsWith(".tgz"),
+  );
+  if (matches.length !== 1) {
+    throw new Error(`${unscopedName}: expected 1 generated tarball, found ${JSON.stringify(matches)}`);
+  }
+  const filename = matches[0];
+  const version = filename.slice(prefix.length, -".tgz".length);
+  copyFileSync(path.join(destination, filename), path.join(destination, `${unscopedName}.tgz`));
+  process.stdout.write(`staged ${unscopedName}@${version} as ${unscopedName}.tgz\n`);
+  return version;
+}
+
 const resolvedRoot = path.resolve(root);
 const resolvedDestination = path.resolve(destination);
 if (!resolvedDestination.startsWith(`${resolvedRoot}${path.sep}`)) {
@@ -32,10 +47,13 @@ if (!resolvedDestination.startsWith(`${resolvedRoot}${path.sep}`)) {
 rmSync(resolvedDestination, { recursive: true, force: true });
 mkdirSync(resolvedDestination, { recursive: true });
 
-run(["run", "build"]);
 for (const relative of packageDirectories) {
+  run(["run", "build"], path.join(root, relative));
   run(["pack", "--pack-destination", destination], path.join(root, relative));
 }
+stageGeneratedTarball("simplia-agent-chat-core");
+stageGeneratedTarball("simplia-agent-chat-adapter-acv2");
+stageGeneratedTarball("simplia-agent-chat-react");
 run(["install", "--no-frozen-lockfile", "--lockfile=false"], consumer);
 run(["run", "typecheck"], consumer);
 run(["run", "test"], consumer);
