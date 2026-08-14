@@ -22,7 +22,20 @@ if (result.status !== 0) {
   process.exit(result.status ?? 1);
 }
 
-const [manifest] = JSON.parse(result.stdout);
+function parsePackJson(output) {
+  const trimmed = output.trim();
+  let cursor = trimmed.lastIndexOf("[");
+  while (cursor >= 0) {
+    try {
+      return JSON.parse(trimmed.slice(cursor));
+    } catch {
+      cursor = trimmed.lastIndexOf("[", cursor - 1);
+    }
+  }
+  throw new Error("npm pack did not emit a JSON manifest");
+}
+
+const [manifest] = parsePackJson(result.stdout);
 const files = new Set(manifest.files.map((entry) => entry.path));
 const required = [
   "LICENSE",
