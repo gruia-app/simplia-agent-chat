@@ -64,11 +64,12 @@ test("ACV2 maps tools, failures and complete run status vocabulary", () => {
     payload: { id: "call", tool: "shell", input: { command: "pwd" } },
   });
   assert.equal(use.payload.status, "streaming");
-  assert.deepEqual(use.payload.input, { command: "pwd" });
+  assert.equal(use.payload.input, undefined);
 
   const failure = only({ event_kind: "tool_result", run_id: "run", payload: { id: "call", error: "boom" } });
   assert.equal(failure.payload.status, "failed");
   assert.equal(failure.payload.isError, true);
+  assert.equal(failure.payload.output, undefined);
 
   for (const [native, expected] of new Map([
     ["QUEUED", "queued"], ["RUNNING", "running"], ["WAITING_INPUT", "waiting_input"],
@@ -233,6 +234,52 @@ test("ACV2 preserves whitespace across streamed and completed message text", () 
   assert.equal(first.payload.delta, "Hello ");
   assert.equal(second.payload.delta, " world\n");
   assert.equal(completed.payload.text, " Hello world\n");
+});
+
+test("ACV2 empty deltas still advance the durable stream cursor", () => {
+  let state = createInitialChatState();
+  const empty = only({
+    cursor: 1,
+    event_kind: "message_delta",
+    run_id: "run-1",
+    payload: { chunk: "" },
+  });
+  const next = only({
+    cursor: 2,
+    event_kind: "message_delta",
+    run_id: "run-1",
+    payload: { chunk: "visible" },
+  });
+  state = reduceChatEvent(state, empty).state;
+  const result = reduceChatEvent(state, next);
+
+  assert.equal(empty.type, "warning");
+  assert.equal(result.applied, true);
+  assert.equal(result.state.streamSequences["thread-1:durable"], 2);
+});
+
+test("ACV2 terminal status without an occurrence time omits generated completion time", () => {
+  const input = {
+    cursor: 1,
+    event_kind: "run_status",
+    run_id: "run-1",
+    payload: { status: "COMPLETED" },
+  };
+  const first = only(input, { occurredAt: undefined });
+  assert.equal(first.payload.completedAt, undefined);
+});
+
+test("ACV2 reason-only terminal cleanup maps to a terminal turn", () => {
+  assert.equal(only({
+    event_kind: "run_status",
+    run_id: "run-1",
+    payload: { reason: "stale_heartbeat" },
+  }).payload.status, "failed");
+  assert.equal(only({
+    event_kind: "run_status",
+    run_id: "run-1",
+    payload: { reason: "superseded_by_new_turn" },
+  }).payload.status, "interrupted");
 });
 
 test("ACV2 accepts globally ordered cursors when durable runs interleave", () => {

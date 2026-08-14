@@ -150,6 +150,21 @@ test("item deltas build transcript and item upserts link once to their turn", ()
   assert.deepEqual(selectTurnItems(state, "turn-1").map((item) => item.id), ["assistant-1"]);
 });
 
+test("empty completed message upsert preserves previously streamed text", () => {
+  let state = replayChatEvents([
+    chatEvent("item.delta", { itemId: "assistant-1", delta: "streamed answer" }, { id: "delta" }),
+  ]);
+  state = reduceChatEvent(state, chatEvent("item.upsert", baseItem({
+    id: "assistant-1",
+    text: "",
+    status: "completed",
+    completedAt: ISO,
+  }), { id: "empty-complete" })).state;
+
+  assert.equal(state.items["assistant-1"].text, "streamed answer");
+  assert.equal(state.items["assistant-1"].status, "completed");
+});
+
 test("surface revisions support merge, append page, complete and conflict detection", () => {
   let state = reduceChatEvent(
     createInitialChatState(),

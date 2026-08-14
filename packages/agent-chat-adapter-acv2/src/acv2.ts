@@ -1,5 +1,4 @@
 import {
-  jsonValue,
   recordValue,
   stringValue,
   type AdapterContext,
@@ -102,6 +101,11 @@ export const acv2PmAdapter: ChatTransportAdapter<Acv2DurableEvent> = {
           itemId: threadScopedEntityId(baseContext.threadId, undefined, `assistant:${runKey}`),
           delta,
         }, provider));
+      } else if (cursor !== undefined) {
+        events.push(event("warning", context, suffix, {
+          code: "acv2_empty_message_delta",
+          message: "Durable message delta contained no text.",
+        }, provider));
       }
       return events;
     }
@@ -137,7 +141,6 @@ export const acv2PmAdapter: ChatTransportAdapter<Acv2DurableEvent> = {
         role: "tool",
         status: isResult ? (isError ? "failed" : "completed") : "streaming",
         toolName: stringValue(payload.tool_name) ?? stringValue(payload.tool) ?? "tool",
-        ...(isResult ? { output: jsonValue(payload.result ?? payload.output ?? payload.error) } : { input: jsonValue(payload.input) }),
         isError,
         metadata: {
           nativeEvent,
@@ -148,12 +151,17 @@ export const acv2PmAdapter: ChatTransportAdapter<Acv2DurableEvent> = {
     }
 
     if (eventKind === "run_status") {
-      const status = turnStatus(payload.status ?? nativeEvent);
+      const reason = stringValue(payload.reason);
+      const status = reason === "stale_heartbeat"
+        ? "failed"
+        : reason === "superseded_by_new_turn"
+          ? "interrupted"
+          : turnStatus(payload.status ?? nativeEvent);
       const error = stringValue(payload.error) ?? stringValue(payload.user_message);
       events.push(event("turn.status", context, suffix, {
         status,
-        ...(status === "completed" || status === "failed" || status === "interrupted" || status === "cancelled"
-          ? { completedAt: context.occurredAt ?? new Date().toISOString() }
+        ...((status === "completed" || status === "failed" || status === "interrupted" || status === "cancelled") && context.occurredAt
+          ? { completedAt: context.occurredAt }
           : {}),
         ...(error ? { error } : {}),
       }, provider));

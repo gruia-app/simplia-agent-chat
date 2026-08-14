@@ -284,7 +284,10 @@ function applyEvent(state: ChatState, event: ChatEvent): ReduceResult {
                 }
               : {}),
           }
-        : item;
+        : previousItem && item.kind === "message" && previousItem.kind === "message" &&
+            item.text === "" && Boolean(previousItem.text)
+          ? { ...previousItem, ...item, text: previousItem.text! }
+          : item;
       const turn = state.turns[item.turnId];
       const turns = turn && !turn.itemIds.includes(item.id)
         ? { ...state.turns, [turn.id]: { ...turn, itemIds: [...turn.itemIds, item.id] } }

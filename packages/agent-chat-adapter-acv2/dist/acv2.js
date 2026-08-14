@@ -1,4 +1,4 @@
-import { jsonValue, recordValue, stringValue, } from "simplia-agent-chat/core/protocol";
+import { recordValue, stringValue, } from "simplia-agent-chat/core/protocol";
 import { event, providerFrom, stableSuffix, threadScopedEntityId, threadScopedTurnId, } from "simplia-agent-chat/core/adapters/shared";
 function turnStatus(value) {
     switch (String(value ?? "").toUpperCase()) {
@@ -76,6 +76,12 @@ export const acv2PmAdapter = {
                     delta,
                 }, provider));
             }
+            else if (cursor !== undefined) {
+                events.push(event("warning", context, suffix, {
+                    code: "acv2_empty_message_delta",
+                    message: "Durable message delta contained no text.",
+                }, provider));
+            }
             return events;
         }
         if (eventKind === "message_completed") {
@@ -104,7 +110,6 @@ export const acv2PmAdapter = {
                 role: "tool",
                 status: isResult ? (isError ? "failed" : "completed") : "streaming",
                 toolName: stringValue(payload.tool_name) ?? stringValue(payload.tool) ?? "tool",
-                ...(isResult ? { output: jsonValue(payload.result ?? payload.output ?? payload.error) } : { input: jsonValue(payload.input) }),
                 isError,
                 metadata: {
                     nativeEvent,
@@ -114,12 +119,17 @@ export const acv2PmAdapter = {
             return events;
         }
         if (eventKind === "run_status") {
-            const status = turnStatus(payload.status ?? nativeEvent);
+            const reason = stringValue(payload.reason);
+            const status = reason === "stale_heartbeat"
+                ? "failed"
+                : reason === "superseded_by_new_turn"
+                    ? "interrupted"
+                    : turnStatus(payload.status ?? nativeEvent);
             const error = stringValue(payload.error) ?? stringValue(payload.user_message);
             events.push(event("turn.status", context, suffix, {
                 status,
-                ...(status === "completed" || status === "failed" || status === "interrupted" || status === "cancelled"
-                    ? { completedAt: context.occurredAt ?? new Date().toISOString() }
+                ...((status === "completed" || status === "failed" || status === "interrupted" || status === "cancelled") && context.occurredAt
+                    ? { completedAt: context.occurredAt }
                     : {}),
                 ...(error ? { error } : {}),
             }, provider));
