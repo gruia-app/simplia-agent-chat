@@ -88,6 +88,8 @@ test("ACV2 unknown durable kinds remain inspectable", () => {
   });
   assert.equal(event.payload.kind, "system");
   assert.equal(event.payload.text, "heartbeat");
+  assert.deepEqual(event.payload.metadata, { nativeEvent: "heartbeat" });
+  assert.equal(event.provider.raw, undefined);
 });
 
 test("ACV2 capability matrix contains exactly the supported provider IDs", () => {
@@ -184,7 +186,7 @@ test("ACV2 preserves caller streamId and defaults to a scoped deterministic stre
 
   const first = durableRunStatus(2);
   const second = durableRunStatus(2);
-  assert.deepEqual(first.stream, { id: "thread-1:run-1", sequence: 2 });
+  assert.deepEqual(first.stream, { id: "thread-1:durable", sequence: 2 });
   assert.deepEqual(second.stream, first.stream);
   assert.equal(first.id, second.id);
 
@@ -195,8 +197,8 @@ test("ACV2 preserves caller streamId and defaults to a scoped deterministic stre
     run_id: "run-2",
     payload: { status: "RUNNING" },
   });
-  assert.deepEqual(otherRunEvent.stream, { id: "thread-1:run-2", sequence: 2 });
-  assert.notEqual(otherRun.stream.id, otherRunEvent.stream.id);
+  assert.deepEqual(otherRunEvent.stream, { id: "thread-1:durable", sequence: 2 });
+  assert.equal(otherRun.stream.id, otherRunEvent.stream.id);
 
   const sequenceOnly = durableRunStatus(undefined, { streamId: "caller-stream", sequence: 9 });
   assert.equal(sequenceOnly.stream, undefined);
@@ -208,12 +210,34 @@ test("ACV2 preserves caller streamId and defaults to a scoped deterministic stre
   assert.equal(noCursor.stream, undefined);
 });
 
+test("ACV2 accepts globally ordered cursors when durable runs interleave", () => {
+  const events = [
+    durableRunStatus(1),
+    only({
+      cursor: 2,
+      event_kind: "run_status",
+      run_id: "run-2",
+      payload: { status: "RUNNING" },
+    }),
+    durableRunStatus(3),
+  ];
+
+  let state = createInitialChatState();
+  for (const event of events) {
+    const result = reduceChatEvent(state, event);
+    assert.equal(result.applied, true);
+    state = result.state;
+  }
+  assert.equal(state.streamSequences["thread-1:durable"], 3);
+  assert.equal(state.resyncRequests["thread-1:durable"], undefined);
+});
+
 test("ACV2 durable cursors detect stream gaps, clear resync, and accept the retry", () => {
   const one = durableRunStatus(1);
   const two = durableRunStatus(2);
   const three = durableRunStatus(3);
   const streamId = one.stream.id;
-  assert.equal(streamId, "thread-1:run-1");
+  assert.equal(streamId, "thread-1:durable");
   assert.equal(two.stream.id, streamId);
   assert.equal(three.stream.id, streamId);
   assert.notEqual(one.id, three.id);

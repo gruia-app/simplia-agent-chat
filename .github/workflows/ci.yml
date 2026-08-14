@@ -15,11 +15,11 @@ jobs:
         node: [20, 22]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
@@ -27,16 +27,19 @@ jobs:
       - run: pnpm check
 
   git-consumer:
+    strategy:
+      matrix:
+        node: [20, 22]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
       - name: Install the public repository at this exact revision
         env:
-          SIMPLIA_AGENT_CHAT_GIT_REF: ${{ github.sha }}
+          SIMPLIA_AGENT_CHAT_GIT_REF: ${{ github.event.pull_request.head.sha || github.sha }}
         run: pnpm run test:git-consumer

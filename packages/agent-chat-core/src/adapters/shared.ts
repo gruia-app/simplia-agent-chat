@@ -1,6 +1,5 @@
 import {
   eventBase,
-  isJsonValue,
   recordValue,
   stringValue,
   type AdapterContext,
@@ -27,16 +26,11 @@ export function providerFrom(input: unknown, fallback: string): ProviderMetadata
   const model = stringValue(value.model);
   const reasoningEffort = stringValue(value.reasoning_effort);
   const sessionId = stringValue(value.session_id);
-  const raw = Object.fromEntries(
-    Object.entries(value)
-      .filter(([, nested]) => isJsonValue(nested)),
-  ) as Record<string, import("../protocol.js").JsonValue>;
   return {
     provider: stringValue(value.backend_provider) ?? stringValue(value.cli_provider) ?? stringValue(value.provider) ?? fallback,
     ...(model ? { model } : {}),
     ...(reasoningEffort ? { reasoningEffort } : {}),
     ...(sessionId ? { sessionId } : {}),
-    ...(Object.keys(raw).length > 0 ? { raw } : {}),
   };
 }
 

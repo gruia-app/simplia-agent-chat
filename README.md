@@ -32,6 +32,8 @@ pnpm add "simplia-agent-chat@github:gruia-app/simplia-agent-chat#<reviewed-commi
 
 Pin a reviewed commit SHA or signed release tag; do not consume a floating branch. No npm account, registry scope or publish credential is required. Applications using the React subpath must also install React and React DOM.
 
+Reviewed commits include the compiled ESM and type declarations. Installation does not run build lifecycle scripts, so consumers may keep `ignore-scripts=true`. Node 20 or newer is required; CommonJS-only consumers need an ESM bridge.
+
 ## Minimal React usage
 
 ```tsx

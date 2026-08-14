@@ -71,7 +71,10 @@ export const acv2PmAdapter: ChatTransportAdapter<Acv2DurableEvent> = {
       ...(input.created_at ? { occurredAt: input.created_at } : {}),
       ...(cursor !== undefined
         ? {
-            streamId: stringValue(callerStreamId) ?? turnId,
+            // ACV2 cursors are journal-wide for one durable thread. A stream
+            // scoped to each run would observe artificial gaps whenever runs
+            // interleave on that journal.
+            streamId: stringValue(callerStreamId) ?? `${baseContext.threadId}:durable`,
             sequence: cursor,
           }
         : {}),
@@ -165,7 +168,7 @@ export const acv2PmAdapter: ChatTransportAdapter<Acv2DurableEvent> = {
       role: "system",
       status: itemStatus(payload.status, "completed"),
       text: stringValue(payload.message) ?? stringValue(payload.error) ?? nativeEvent,
-      metadata: { nativeEvent, payload: jsonValue(payload) },
+      metadata: { nativeEvent },
     }, provider));
     return events;
   },

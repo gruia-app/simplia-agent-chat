@@ -4,6 +4,8 @@ The public Git repository is the distribution channel. Applications consume `sim
 
 No npm organization, registry session, package publication or publish token is part of this release process. The root package and every internal workspace package remain `private: true` to make accidental registry publication fail closed.
 
+Compiled `packages/*/dist` files are versioned alongside their sources. `pnpm check` rebuilds them and fails if the committed artifact differs, while the Git-consumer smoke installs with lifecycle scripts disabled. A consumer therefore never needs the repository's workspace toolchain.
+
 ## Consumer contract
 
 Add one direct dependency:
@@ -27,7 +29,7 @@ Commit the consumer lockfile. The dependency declaration documents the reviewed 
 
 ## Creating a release
 
-1. Add a Changeset for public API changes.
+1. Add a Changeset for public API changes, including the root `simplia-agent-chat` package that consumers install.
 2. Run `pnpm check` from a clean checkout.
 3. Run `pnpm version-packages` and review the changelog and version.
 4. Commit the version change.

@@ -113,7 +113,6 @@ function normalizeItem(itemInput: unknown, context: AdapterContext): ChatItem {
         : {}),
     metadata: {
       nativeType,
-      native: jsonValue(item),
       ...(nativeItemId ? { nativeItemId } : {}),
     },
   };
@@ -156,7 +155,7 @@ export const codexAppServerAdapter: ChatTransportAdapter<CodexAppServerMessage> 
         ...(title ? { title } : {}),
         status: "active",
         provider,
-        metadata: { nativeThread: jsonValue(thread) },
+        metadata: { transport: "codex-app-server" },
       }, provider)];
     }
 
@@ -208,7 +207,7 @@ export const codexAppServerAdapter: ChatTransportAdapter<CodexAppServerMessage> 
     }
 
     if (method === "turn/plan/updated" || method === "turn/diff/updated") {
-      const kind = method === "turn/plan/updated" ? "acv2.plan" : "acv2.diff";
+      const kind = method === "turn/plan/updated" ? "codex.plan" : "codex.diff";
       const revision = numberValue(params.revision) ?? context.sequence ?? 1;
       return [event("surface.upsert", eventContext, suffix, {
         id: threadScopedEntityId(context.threadId, undefined, `${kind}:${nativeTurnId ?? "thread"}`),
@@ -243,7 +242,11 @@ export const codexAppServerAdapter: ChatTransportAdapter<CodexAppServerMessage> 
         status: "pending",
         title: method === "item/tool/requestUserInput" ? "Codex needs input" : "Codex requires approval",
         ...(description ? { description } : {}),
-        payload: jsonValue(params),
+        payload: {
+          method,
+          requestId,
+          ...(nativeItemId ? { itemId: nativeItemId } : {}),
+        },
         ...(Array.isArray(params.availableDecisions)
           ? { availableDecisions: params.availableDecisions.map(String) }
           : {}),
@@ -276,7 +279,6 @@ export const codexAppServerAdapter: ChatTransportAdapter<CodexAppServerMessage> 
       return [event("warning", eventContext, suffix, {
         code: method,
         message: stringValue(params.message) ?? stringValue(params.error) ?? method,
-        detail: jsonValue(params),
       }, provider)];
     }
 

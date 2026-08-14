@@ -29,7 +29,7 @@ test("Codex maps thread and turn lifecycle with native provider identity", () =>
     title: "Research",
     status: "active",
     provider: { provider: "codex", nativeThreadId: "native-thread" },
-    metadata: { nativeThread: { id: "native-thread", name: "Research" } },
+    metadata: { transport: "codex-app-server" },
   });
 
   const started = only(codexAppServerAdapter, {
@@ -65,7 +65,7 @@ test("Codex maps thread and turn lifecycle with native provider identity", () =>
   }
 });
 
-test("Codex covers every documented item family and preserves native data", () => {
+test("Codex covers every documented item family without echoing native payloads", () => {
   const kinds = new Map([
     ["userMessage", "message"],
     ["agentMessage", "message"],
@@ -103,7 +103,7 @@ test("Codex covers every documented item family and preserves native data", () =
     assert.equal(event.payload.text, "one\ntwo");
     assert.equal(event.payload.status, sequence % 2 ? "completed" : "pending");
     assert.equal(event.payload.metadata.nativeType, nativeType);
-    assert.deepEqual(event.payload.metadata.native, item);
+    assert.equal("native" in event.payload.metadata, false);
     if (nativeType === "userMessage") assert.equal(event.payload.role, "user");
     if (nativeType === "agentMessage") assert.equal(event.payload.role, "assistant");
     sequence += 1;
@@ -145,7 +145,7 @@ test("Codex maps all streaming delta methods and ignores empty deltas", () => {
 });
 
 test("Codex maps plan/diff surfaces with revisions", () => {
-  for (const [method, kind] of [["turn/plan/updated", "acv2.plan"], ["turn/diff/updated", "acv2.diff"]]) {
+  for (const [method, kind] of [["turn/plan/updated", "codex.plan"], ["turn/diff/updated", "codex.diff"]]) {
     const event = only(codexAppServerAdapter, {
       method,
       params: { turnId: "native-turn", revision: 7, entries: [{ id: 1 }] },
@@ -184,6 +184,11 @@ test("Codex maps approvals, questions, elicitation and resolution", () => {
     assert.equal(event.payload.id, `thread-1:codex-request:${id}`);
     assert.equal(event.payload.kind, kind, method);
     assert.deepEqual(event.payload.availableDecisions, ["accept", "decline"]);
+    assert.deepEqual(event.payload.payload, {
+      method,
+      requestId: String(id),
+      itemId: "item-1",
+    });
     id += 1;
   }
 

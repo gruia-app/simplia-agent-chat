@@ -41,6 +41,7 @@ const packageJson = JSON.parse(readFileSync(path.join(fixture, "package.json"), 
 packageJson.dependencies["simplia-agent-chat"] =
   `github:gruia-app/simplia-agent-chat#${revision}`;
 writeFileSync(path.join(destination, "package.json"), `${JSON.stringify(packageJson, null, 2)}\n`);
+writeFileSync(path.join(destination, ".npmrc"), "ignore-scripts=true\n");
 
 run(["install"]);
 run(["run", "typecheck"]);

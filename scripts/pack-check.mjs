@@ -44,6 +44,9 @@ const required = [
   "package.json",
   "packages/agent-chat-core/dist/index.js",
   "packages/agent-chat-core/dist/index.d.ts",
+  "packages/agent-chat-core/dist/protocol.js",
+  "packages/agent-chat-core/dist/state.js",
+  "packages/agent-chat-core/dist/adapters/shared.js",
   "packages/agent-chat-adapter-acv2/dist/index.js",
   "packages/agent-chat-adapter-acv2/dist/index.d.ts",
   "packages/agent-chat-react/dist/index.js",
@@ -65,6 +68,14 @@ if (packageJson.private !== true) {
 }
 if (packageJson.scripts?.release || packageJson.publishConfig) {
   throw new Error("git bundle must not expose a registry publishing path");
+}
+if (packageJson.scripts?.prepare || packageJson.scripts?.prepack) {
+  throw new Error("git bundle must install from committed dist without lifecycle builds");
+}
+
+const npmrc = readFileSync(path.join(root, ".npmrc"), "utf8");
+if (/^\s*(access|registry)\s*=/m.test(npmrc)) {
+  throw new Error("git bundle must not configure registry publication");
 }
 
 const license = readFileSync(path.join(root, "LICENSE"), "utf8");

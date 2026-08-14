@@ -62,14 +62,26 @@
     "test": "pnpm -r --workspace-concurrency=1 run test",
     "test:consumer": "node scripts/external-consumer-smoke.mjs",
     "test:git-consumer": "node scripts/git-consumer-smoke.mjs",
+    "dist:check": "node scripts/dist-check.mjs",
     "pack:check": "node scripts/pack-check.mjs",
-    "check": "pnpm run typecheck && pnpm run test && pnpm run pack:check && pnpm run test:consumer",
-    "prepare": "pnpm run build",
+    "check": "pnpm run typecheck && pnpm run test && pnpm run pack:check && pnpm run dist:check && pnpm run test:consumer",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release:check": "pnpm run check"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.0"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   }
 }
