@@ -6,13 +6,13 @@ import {
   type AdapterContext,
   type ChatEvent,
   type ChatTransportAdapter,
-} from "@simplia/agent-chat-core/protocol";
+} from "simplia-agent-chat/core/protocol";
 import {
   event,
   providerFrom,
   threadScopedEntityId,
   threadScopedTurnId,
-} from "@simplia/agent-chat-core/adapters/shared";
+} from "simplia-agent-chat/core/adapters/shared";
 
 export interface Acv2DirectChatExchange {
   /** Stable client-generated ID for one user/assistant exchange. */

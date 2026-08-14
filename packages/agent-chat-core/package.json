@@ -1,6 +1,7 @@
 {
   "name": "@simplia/agent-chat-core",
   "version": "0.1.0",
+  "private": true,
   "description": "Provider-neutral protocol, state machine, surfaces and adapters for agentic chat.",
   "license": "Apache-2.0",
   "type": "module",
@@ -55,10 +56,6 @@
   "keywords": ["agent", "chat", "codex", "langchain", "openrouter", "sse", "typescript"],
   "engines": {
     "node": ">=20"
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
   },
   "scripts": {
     "build": "node ./node_modules/typescript/bin/tsc -p tsconfig.json",

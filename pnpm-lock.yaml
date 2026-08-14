@@ -14,18 +14,15 @@ importers:
 
   examples/react-lab:
     dependencies:
-      '@simplia/agent-chat-core':
-        specifier: workspace:*
-        version: link:../../packages/agent-chat-core
-      '@simplia/agent-chat-react':
-        specifier: workspace:*
-        version: link:../../packages/agent-chat-react
       react:
         specifier: 19.2.8
         version: 19.2.8
       react-dom:
         specifier: 19.2.8
         version: 19.2.8(react@19.2.8)
+      simplia-agent-chat:
+        specifier: workspace:*
+        version: link:../..
     devDependencies:
       '@types/react':
         specifier: ^19.2.18
@@ -48,6 +45,9 @@ importers:
       '@simplia/agent-chat-core':
         specifier: workspace:^
         version: link:../agent-chat-core
+      simplia-agent-chat:
+        specifier: workspace:*
+        version: link:../..
     devDependencies:
       typescript:
         specifier: ^5.6.3
@@ -64,6 +64,9 @@ importers:
       '@simplia/agent-chat-core':
         specifier: workspace:^
         version: link:../agent-chat-core
+      simplia-agent-chat:
+        specifier: workspace:*
+        version: link:../..
     devDependencies:
       '@types/react':
         specifier: ^19.2.18

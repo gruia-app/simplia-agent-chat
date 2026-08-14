@@ -7,7 +7,7 @@ import type {
   PendingInteraction,
   SurfaceActionRef,
   SurfaceBlock,
-} from "@simplia/agent-chat-core";
+} from "simplia-agent-chat/core";
 import { ChatComposer, type ChatComposerProps } from "./ChatComposer.js";
 import { ChatTimeline } from "./ChatTimeline.js";
 import { PendingInteractions } from "./PendingInteractions.js";

@@ -5,7 +5,7 @@ Surfaces let applications render domain artifacts without adding domain concepts
 ## Core plugin
 
 ```ts
-import { SurfaceRegistry } from "@simplia/agent-chat-core/surfaces";
+import { SurfaceRegistry } from "simplia-agent-chat/core/surfaces";
 
 type TablePayload = {
   columns: string[];
@@ -30,7 +30,7 @@ Real applications should use a schema validator such as Zod, Valibot or JSON Sch
 ## React plugin
 
 ```tsx
-import { ReactSurfaceRegistry } from "@simplia/agent-chat-react";
+import { ReactSurfaceRegistry } from "simplia-agent-chat/react";
 
 const registry = new ReactSurfaceRegistry();
 registry.register({

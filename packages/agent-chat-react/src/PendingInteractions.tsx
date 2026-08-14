@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { JsonValue, PendingInteraction } from "@simplia/agent-chat-core";
+import type { JsonValue, PendingInteraction } from "simplia-agent-chat/core";
 
 export interface PendingInteractionsProps {
   interactions: PendingInteraction[];

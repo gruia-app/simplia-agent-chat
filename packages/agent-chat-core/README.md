@@ -1,4 +1,4 @@
-# @simplia/agent-chat-core
+# Simplia Agent Chat core
 
 Headless TypeScript runtime for provider-neutral agent chat.
 
@@ -14,12 +14,12 @@ It provides:
 - adapters for Codex, LangChain and OpenAI-compatible/OpenRouter streams.
 
 ```bash
-pnpm add @simplia/agent-chat-core
+pnpm add "simplia-agent-chat@github:gruia-app/simplia-agent-chat#<reviewed-commit-sha>"
 ```
 
 ```ts
-import { validateChatEvent } from "@simplia/agent-chat-core/protocol";
-import { reduceChatEvent, createInitialChatState } from "@simplia/agent-chat-core/state";
+import { validateChatEvent } from "simplia-agent-chat/core/protocol";
+import { reduceChatEvent, createInitialChatState } from "simplia-agent-chat/core/state";
 
 const validated = validateChatEvent(event);
 if (validated.ok) {

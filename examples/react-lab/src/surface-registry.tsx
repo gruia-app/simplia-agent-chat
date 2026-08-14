@@ -1,11 +1,11 @@
 "use client";
 
-import type { JsonValue } from "@simplia/agent-chat-core";
+import type { JsonValue } from "simplia-agent-chat/core";
 import {
   ReactSurfaceRegistry,
   type ReactSurfacePlugin,
   type SurfaceRendererProps,
-} from "@simplia/agent-chat-react";
+} from "simplia-agent-chat/react";
 
 type DeploymentEvidencePayload = {
   releaseSha: string;

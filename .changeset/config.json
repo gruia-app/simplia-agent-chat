@@ -8,5 +8,9 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "bumpVersionsWithWorkspaceProtocolOnly": true,
+  "privatePackages": {
+    "version": true,
+    "tag": false
+  },
   "ignore": []
 }

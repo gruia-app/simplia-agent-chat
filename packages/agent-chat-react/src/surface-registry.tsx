@@ -8,7 +8,7 @@ import {
   type SurfaceBlock,
   type SurfacePlugin,
   unknownSurfaceSummary,
-} from "@simplia/agent-chat-core";
+} from "simplia-agent-chat/core";
 
 export interface SurfaceRendererProps<TPayload extends JsonValue> {
   block: SurfaceBlock<TPayload>;

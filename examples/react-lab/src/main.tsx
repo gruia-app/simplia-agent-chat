@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "@simplia/agent-chat-react/styles.css";
+import "simplia-agent-chat/react/styles.css";
 import "./chat-lab.css";
 import "./page.css";
 import { ChatLab } from "./ChatLab";

@@ -7,14 +7,14 @@ import {
   type ChatTransportAdapter,
   type ItemStatus,
   type TurnStatus,
-} from "@simplia/agent-chat-core/protocol";
+} from "simplia-agent-chat/core/protocol";
 import {
   event,
   providerFrom,
   stableSuffix,
   threadScopedEntityId,
   threadScopedTurnId,
-} from "@simplia/agent-chat-core/adapters/shared";
+} from "simplia-agent-chat/core/adapters/shared";
 
 export interface Acv2DurableEvent {
   cursor?: number;

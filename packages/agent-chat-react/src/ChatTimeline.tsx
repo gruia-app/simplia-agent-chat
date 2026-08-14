@@ -9,7 +9,7 @@ import {
   type JsonValue,
   type SurfaceActionRef,
   type SurfaceBlock,
-} from "@simplia/agent-chat-core";
+} from "simplia-agent-chat/core";
 import { ReactSurfaceRegistry, SurfaceHost } from "./surface-registry.js";
 
 export interface ChatTimelineProps {

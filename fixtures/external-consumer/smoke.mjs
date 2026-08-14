@@ -2,18 +2,18 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { createInitialChatState, reduceChatEvent } from "@simplia/agent-chat-core/state";
-import { hasGrantedCapability } from "@simplia/agent-chat-core/providers";
+import { createInitialChatState, reduceChatEvent } from "simplia-agent-chat/core/state";
+import { hasGrantedCapability } from "simplia-agent-chat/core/providers";
 import {
   ACV2_PROVIDER_CAPABILITIES,
   acv2PmAdapter,
-} from "@simplia/agent-chat-adapter-acv2";
+} from "simplia-agent-chat/adapters/acv2";
 import {
   AgentChatShell,
   ChatComposer,
   ReactSurfaceRegistry,
   SurfaceHost,
-} from "@simplia/agent-chat-react";
+} from "simplia-agent-chat/react";
 
 const [event] = acv2PmAdapter.normalize({
   event_kind: "message_completed",
@@ -78,6 +78,6 @@ assert.match(surfaceHtml, /SURFACE_UNAVAILABLE/);
 assert.match(surfaceHtml, /consumer\.example/);
 assert.doesNotMatch(surfaceHtml, /"ok":true/);
 
-assert.match(import.meta.resolve("@simplia/agent-chat-react/styles.css"), /styles\.css$/);
+assert.match(import.meta.resolve("simplia-agent-chat/react/styles.css"), /styles\.css$/);
 
 console.log("external_consumer_smoke_ok");

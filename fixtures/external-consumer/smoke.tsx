@@ -1,7 +1,7 @@
-import type { ChatState, SurfaceBlock } from "@simplia/agent-chat-core";
-import { createInitialChatState } from "@simplia/agent-chat-core/state";
-import { acv2ProviderCapabilities } from "@simplia/agent-chat-adapter-acv2";
-import { AgentChatShell, ReactSurfaceRegistry, SurfaceHost } from "@simplia/agent-chat-react";
+import type { ChatState, SurfaceBlock } from "simplia-agent-chat/core";
+import { createInitialChatState } from "simplia-agent-chat/core/state";
+import { acv2ProviderCapabilities } from "simplia-agent-chat/adapters/acv2";
+import { AgentChatShell, ReactSurfaceRegistry, SurfaceHost } from "simplia-agent-chat/react";
 
 const state: ChatState = createInitialChatState();
 const registry = new ReactSurfaceRegistry();

@@ -9,9 +9,9 @@ Use an `AgentProviderPort` when the backend has durable sessions, tools, approva
 Provider SDK or transport events should pass through a `ChatTransportAdapter`. Persist or stream normalized `ChatEvent` envelopes, validate them, then reduce them with `reduceChatEvent`.
 
 ```ts
-import { validateChatEvent } from "@simplia/agent-chat-core/protocol";
-import { reduceChatEvent, createInitialChatState } from "@simplia/agent-chat-core/state";
-import { codexAppServerAdapter } from "@simplia/agent-chat-core/adapters/codex";
+import { validateChatEvent } from "simplia-agent-chat/core/protocol";
+import { reduceChatEvent, createInitialChatState } from "simplia-agent-chat/core/state";
+import { codexAppServerAdapter } from "simplia-agent-chat/core/adapters/codex";
 
 let state = createInitialChatState();
 for (const event of codexAppServerAdapter.normalize(notification, context)) {
@@ -62,7 +62,7 @@ For every approval or surface action, verify:
 
 ## ACV2
 
-Install `@simplia/agent-chat-adapter-acv2` and normalize durable PM/run events with `acv2PmAdapter`. The package also exposes the nine current provider profiles. Runtime capability discovery should override stale static assumptions, but never grant permission by itself.
+Import `acv2PmAdapter` from `simplia-agent-chat/adapters/acv2` to normalize durable PM/run events. The subpath also exposes the nine current provider profiles. Runtime capability discovery should override stale static assumptions, but never grant permission by itself.
 
 `acv2PmAdapter` scopes native run, message, tool, and fallback system IDs by `context.threadId` without double-scoping an already-prefixed identifier. Preserve native run and tool identity from `provider.nativeTurnId` / `provider.nativeThreadId` or item `metadata.nativeItemId` instead of parsing the scoped identifier.
 

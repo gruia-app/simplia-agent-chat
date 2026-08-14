@@ -6,11 +6,6 @@ import path from "node:path";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const destination = path.join(root, ".artifacts", "packs");
 const consumer = path.join(root, "fixtures", "external-consumer");
-const packageDirectories = [
-  "packages/agent-chat-core",
-  "packages/agent-chat-adapter-acv2",
-  "packages/agent-chat-react",
-];
 
 function run(args, cwd = root) {
   const packageManagerCli = process.env.npm_execpath;
@@ -47,13 +42,9 @@ if (!resolvedDestination.startsWith(`${resolvedRoot}${path.sep}`)) {
 rmSync(resolvedDestination, { recursive: true, force: true });
 mkdirSync(resolvedDestination, { recursive: true });
 
-for (const relative of packageDirectories) {
-  run(["run", "build"], path.join(root, relative));
-  run(["pack", "--pack-destination", destination], path.join(root, relative));
-}
-stageGeneratedTarball("simplia-agent-chat-core");
-stageGeneratedTarball("simplia-agent-chat-adapter-acv2");
-stageGeneratedTarball("simplia-agent-chat-react");
+run(["run", "build"]);
+run(["pack", "--pack-destination", destination]);
+stageGeneratedTarball("simplia-agent-chat");
 run(["install", "--no-frozen-lockfile", "--lockfile=false"], consumer);
 run(["run", "typecheck"], consumer);
 run(["run", "test"], consumer);

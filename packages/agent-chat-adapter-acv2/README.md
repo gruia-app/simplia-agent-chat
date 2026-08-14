@@ -1,13 +1,13 @@
-# @simplia/agent-chat-adapter-acv2
+# Simplia Agent Chat ACV2 adapter
 
 Optional adapter for ACV2 durable run events and the ACV2 provider capability profiles.
 
 ```bash
-pnpm add @simplia/agent-chat-core @simplia/agent-chat-adapter-acv2
+pnpm add "simplia-agent-chat@github:gruia-app/simplia-agent-chat#<reviewed-commit-sha>"
 ```
 
 ```ts
-import { acv2PmAdapter } from "@simplia/agent-chat-adapter-acv2";
+import { acv2PmAdapter } from "simplia-agent-chat/adapters/acv2";
 
 const events = acv2PmAdapter.normalize(durableEvent, context);
 ```

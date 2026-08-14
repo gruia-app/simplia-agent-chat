@@ -1,6 +1,7 @@
 {
   "name": "@simplia/agent-chat-adapter-acv2",
   "version": "0.1.0",
+  "private": true,
   "description": "ACV2 durable-event adapter and provider profiles for Simplia Agent Chat.",
   "license": "Apache-2.0",
   "type": "module",
@@ -26,17 +27,14 @@
   "engines": {
     "node": ">=20"
   },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
   "scripts": {
     "build": "node ./node_modules/typescript/bin/tsc -p tsconfig.json",
     "typecheck": "node ./node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
     "test": "pnpm run build && node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@simplia/agent-chat-core": "workspace:^"
+    "@simplia/agent-chat-core": "workspace:^",
+    "simplia-agent-chat": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

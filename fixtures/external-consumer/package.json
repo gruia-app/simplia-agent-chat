@@ -7,9 +7,7 @@
     "test": "node smoke.mjs"
   },
   "dependencies": {
-    "@simplia/agent-chat-core": "file:../../.artifacts/packs/simplia-agent-chat-core.tgz",
-    "@simplia/agent-chat-adapter-acv2": "file:../../.artifacts/packs/simplia-agent-chat-adapter-acv2.tgz",
-    "@simplia/agent-chat-react": "file:../../.artifacts/packs/simplia-agent-chat-react.tgz",
+    "simplia-agent-chat": "file:../../.artifacts/packs/simplia-agent-chat.tgz",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },
@@ -17,10 +15,5 @@
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "typescript": "5.9.3"
-  },
-  "pnpm": {
-    "overrides": {
-      "@simplia/agent-chat-core": "file:../../.artifacts/packs/simplia-agent-chat-core.tgz"
-    }
   }
 }

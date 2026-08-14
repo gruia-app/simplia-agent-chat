@@ -4,7 +4,7 @@ import {
   type JsonValue,
   type PendingInteraction,
   type SurfaceBlock,
-} from "@simplia/agent-chat-core";
+} from "simplia-agent-chat/core";
 
 export type LabFixtureKey = "acv2" | "contenido" | "data";
 
