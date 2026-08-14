@@ -210,6 +210,31 @@ test("ACV2 preserves caller streamId and defaults to a scoped deterministic stre
   assert.equal(noCursor.stream, undefined);
 });
 
+test("ACV2 preserves whitespace across streamed and completed message text", () => {
+  const first = only({
+    cursor: 1,
+    event_kind: "message_delta",
+    run_id: "run-1",
+    payload: { chunk: "Hello " },
+  });
+  const second = only({
+    cursor: 2,
+    event_kind: "message_delta",
+    run_id: "run-1",
+    payload: { chunk: " world\n" },
+  });
+  const completed = only({
+    cursor: 3,
+    event_kind: "message_completed",
+    run_id: "run-1",
+    payload: { response: " Hello world\n" },
+  });
+
+  assert.equal(first.payload.delta, "Hello ");
+  assert.equal(second.payload.delta, " world\n");
+  assert.equal(completed.payload.text, " Hello world\n");
+});
+
 test("ACV2 accepts globally ordered cursors when durable runs interleave", () => {
   const events = [
     durableRunStatus(1),

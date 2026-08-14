@@ -28,6 +28,9 @@ function durableCursor(value) {
         ? value
         : undefined;
 }
+function textFragment(value) {
+    return typeof value === "string" && value.length > 0 ? value : undefined;
+}
 export const acv2PmAdapter = {
     id: "acv2-pm-v1",
     normalize(input, baseContext) {
@@ -66,7 +69,7 @@ export const acv2PmAdapter = {
             : "run";
         const events = [];
         if (eventKind === "message_delta") {
-            const delta = stringValue(payload.chunk) ?? stringValue(payload.content) ?? stringValue(payload.text) ?? "";
+            const delta = textFragment(payload.chunk) ?? textFragment(payload.content) ?? textFragment(payload.text) ?? "";
             if (delta) {
                 events.push(event("item.delta", context, suffix, {
                     itemId: threadScopedEntityId(baseContext.threadId, undefined, `assistant:${runKey}`),
@@ -83,7 +86,7 @@ export const acv2PmAdapter = {
                 kind: "message",
                 role: "assistant",
                 status: "completed",
-                text: stringValue(payload.response) ?? stringValue(payload.content) ?? "",
+                text: textFragment(payload.response) ?? textFragment(payload.content) ?? "",
                 ...(input.created_at ? { completedAt: input.created_at } : {}),
                 metadata: { nativeEvent },
             }, provider));
