@@ -25,3 +25,18 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+
+  git-consumer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install the public repository at this exact revision
+        env:
+          SIMPLIA_AGENT_CHAT_GIT_REF: ${{ github.sha }}
+        run: pnpm run test:git-consumer
