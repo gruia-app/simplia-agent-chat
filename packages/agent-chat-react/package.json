@@ -1,6 +1,7 @@
 {
   "name": "@simplia/agent-chat-react",
   "version": "0.1.0",
+  "private": true,
   "description": "Accessible React shell and trusted surface registry for Simplia Agent Chat.",
   "license": "Apache-2.0",
   "type": "module",
@@ -27,17 +28,14 @@
   "engines": {
     "node": ">=20"
   },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
   "scripts": {
     "build": "node ./node_modules/typescript/bin/tsc -p tsconfig.json && node -e \"require('node:fs').copyFileSync('src/styles.css', 'dist/styles.css')\"",
     "typecheck": "node ./node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
     "test": "pnpm run build && node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@simplia/agent-chat-core": "workspace:^"
+    "@simplia/agent-chat-core": "workspace:^",
+    "simplia-agent-chat": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18.2.0 <20",
@@ -46,6 +44,7 @@
   "devDependencies": {
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "happy-dom": "^20.11.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "typescript": "^5.6.3"

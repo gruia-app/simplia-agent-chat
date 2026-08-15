@@ -50,6 +50,19 @@ export function baseTurn(overrides = {}) {
   };
 }
 
+export function baseItem(overrides = {}) {
+  return {
+    id: "item-1",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    kind: "message",
+    status: "streaming",
+    role: "assistant",
+    text: "",
+    ...overrides,
+  };
+}
+
 export function baseSurface(overrides = {}) {
   return {
     id: "surface-1",

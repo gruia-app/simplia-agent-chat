@@ -9,6 +9,7 @@ import {
   isAcv2ProviderKey,
 } from "../dist/index.js";
 import { hasGrantedCapability, supportsFeature } from "@simplia/agent-chat-core/providers";
+import { createInitialChatState, reduceChatEvent } from "@simplia/agent-chat-core/state";
 
 const ISO = "2026-08-13T12:00:00.000Z";
 const CONTEXT = {
@@ -20,10 +21,23 @@ const CONTEXT = {
   occurredAt: ISO,
 };
 
-function only(input) {
-  const events = acv2PmAdapter.normalize(input, CONTEXT);
+function normalize(input, overrides = {}) {
+  return acv2PmAdapter.normalize(input, { ...CONTEXT, ...overrides });
+}
+
+function only(input, overrides = {}) {
+  const events = normalize(input, overrides);
   assert.equal(events.length, 1);
   return events[0];
+}
+
+function durableRunStatus(cursor, overrides = {}) {
+  return only({
+    cursor,
+    event_kind: "run_status",
+    run_id: "run-1",
+    payload: { status: "RUNNING" },
+  }, overrides);
 }
 
 test("ACV2 declares and normalizes every durable event family", () => {
@@ -50,11 +64,12 @@ test("ACV2 maps tools, failures and complete run status vocabulary", () => {
     payload: { id: "call", tool: "shell", input: { command: "pwd" } },
   });
   assert.equal(use.payload.status, "streaming");
-  assert.deepEqual(use.payload.input, { command: "pwd" });
+  assert.equal(use.payload.input, undefined);
 
   const failure = only({ event_kind: "tool_result", run_id: "run", payload: { id: "call", error: "boom" } });
   assert.equal(failure.payload.status, "failed");
   assert.equal(failure.payload.isError, true);
+  assert.equal(failure.payload.output, undefined);
 
   for (const [native, expected] of new Map([
     ["QUEUED", "queued"], ["RUNNING", "running"], ["WAITING_INPUT", "waiting_input"],
@@ -74,6 +89,8 @@ test("ACV2 unknown durable kinds remain inspectable", () => {
   });
   assert.equal(event.payload.kind, "system");
   assert.equal(event.payload.text, "heartbeat");
+  assert.deepEqual(event.payload.metadata, { nativeEvent: "heartbeat" });
+  assert.equal(event.provider.raw, undefined);
 });
 
 test("ACV2 capability matrix contains exactly the supported provider IDs", () => {
@@ -111,4 +128,255 @@ test("ACV2 capability support and grants remain separate", () => {
   };
   assert.equal(supportsFeature(grok, "filesystemWrite"), "unknown");
   assert.equal(hasGrantedCapability(grok, "filesystemWrite"), false);
+});
+
+test("ACV2 scopes native run and tool IDs by thread without collisions", () => {
+  const toolInput = {
+    event_kind: "tool_use",
+    run_id: "run-1",
+    payload: { tool_use_id: "t1", tool_name: "search" },
+  };
+  const first = only(toolInput, { threadId: "thread-1" });
+  const second = only(toolInput, { threadId: "thread-2" });
+  assert.equal(first.turnId, "thread-1:run-1");
+  assert.equal(second.turnId, "thread-2:run-1");
+  assert.equal(first.payload.turnId, "thread-1:run-1");
+  assert.equal(second.payload.turnId, "thread-2:run-1");
+  assert.equal(first.payload.id, "thread-1:t1");
+  assert.equal(second.payload.id, "thread-2:t1");
+  assert.notEqual(first.payload.id, second.payload.id);
+  assert.equal(first.provider.nativeTurnId, "run-1");
+  assert.equal(first.payload.metadata.nativeItemId, "t1");
+
+  const alreadyScoped = only({ ...toolInput, run_id: "thread-1:run-1" }, { threadId: "thread-1" });
+  assert.equal(alreadyScoped.turnId, "thread-1:run-1");
+  assert.equal(alreadyScoped.payload.id, "thread-1:t1");
+
+  const messageA = only({
+    event_kind: "message_completed",
+    run_id: "run-1",
+    payload: { response: "hello" },
+  }, { threadId: "thread-1" });
+  const messageB = only({
+    event_kind: "message_completed",
+    run_id: "run-1",
+    payload: { response: "hello" },
+  }, { threadId: "thread-2" });
+  assert.equal(messageA.payload.id, "thread-1:assistant:run-1");
+  assert.equal(messageB.payload.id, "thread-2:assistant:run-1");
+
+  const systemA = only({
+    cursor: 8,
+    event_kind: "new_native_event",
+    run_id: "run-1",
+    payload: { event: "heartbeat" },
+  }, { threadId: "thread-1" });
+  const systemB = only({
+    cursor: 8,
+    event_kind: "new_native_event",
+    run_id: "run-1",
+    payload: { event: "heartbeat" },
+  }, { threadId: "thread-2" });
+  assert.equal(systemA.payload.id, "thread-1:system:run-1:8:heartbeat");
+  assert.equal(systemB.payload.id, "thread-2:system:run-1:8:heartbeat");
+});
+
+test("ACV2 preserves caller streamId and defaults to a scoped deterministic stream", () => {
+  const caller = durableRunStatus(1, { streamId: "caller-stream" });
+  assert.deepEqual(caller.stream, { id: "caller-stream", sequence: 1 });
+
+  const first = durableRunStatus(2);
+  const second = durableRunStatus(2);
+  assert.deepEqual(first.stream, { id: "thread-1:durable", sequence: 2 });
+  assert.deepEqual(second.stream, first.stream);
+  assert.equal(first.id, second.id);
+
+  const otherRun = durableRunStatus(2);
+  const otherRunEvent = only({
+    cursor: 2,
+    event_kind: "run_status",
+    run_id: "run-2",
+    payload: { status: "RUNNING" },
+  });
+  assert.deepEqual(otherRunEvent.stream, { id: "thread-1:durable", sequence: 2 });
+  assert.equal(otherRun.stream.id, otherRunEvent.stream.id);
+
+  const sequenceOnly = durableRunStatus(undefined, { streamId: "caller-stream", sequence: 9 });
+  assert.equal(sequenceOnly.stream, undefined);
+  const noCursor = only({
+    event_kind: "run_status",
+    run_id: "run-1",
+    payload: { status: "RUNNING" },
+  }, { streamId: "caller-stream", sequence: 9 });
+  assert.equal(noCursor.stream, undefined);
+});
+
+test("ACV2 preserves whitespace across streamed and completed message text", () => {
+  const first = only({
+    cursor: 1,
+    event_kind: "message_delta",
+    run_id: "run-1",
+    payload: { chunk: "Hello " },
+  });
+  const second = only({
+    cursor: 2,
+    event_kind: "message_delta",
+    run_id: "run-1",
+    payload: { chunk: " world\n" },
+  });
+  const completed = only({
+    cursor: 3,
+    event_kind: "message_completed",
+    run_id: "run-1",
+    payload: { response: " Hello world\n" },
+  });
+
+  assert.equal(first.payload.delta, "Hello ");
+  assert.equal(second.payload.delta, " world\n");
+  assert.equal(completed.payload.text, " Hello world\n");
+});
+
+test("ACV2 empty deltas still advance the durable stream cursor", () => {
+  let state = createInitialChatState();
+  const empty = only({
+    cursor: 1,
+    event_kind: "message_delta",
+    run_id: "run-1",
+    payload: { chunk: "" },
+  });
+  const next = only({
+    cursor: 2,
+    event_kind: "message_delta",
+    run_id: "run-1",
+    payload: { chunk: "visible" },
+  });
+  state = reduceChatEvent(state, empty).state;
+  const result = reduceChatEvent(state, next);
+
+  assert.equal(empty.type, "warning");
+  assert.equal(result.applied, true);
+  assert.equal(result.state.streamSequences["thread-1:durable"], 2);
+});
+
+test("ACV2 terminal status without an occurrence time omits generated completion time", () => {
+  const input = {
+    cursor: 1,
+    event_kind: "run_status",
+    run_id: "run-1",
+    payload: { status: "COMPLETED" },
+  };
+  const first = only(input, { occurredAt: undefined });
+  assert.equal(first.payload.completedAt, undefined);
+});
+
+test("ACV2 reason-only terminal cleanup maps to a terminal turn", () => {
+  assert.equal(only({
+    event_kind: "run_status",
+    run_id: "run-1",
+    payload: { reason: "stale_heartbeat" },
+  }).payload.status, "failed");
+  assert.equal(only({
+    event_kind: "run_status",
+    run_id: "run-1",
+    payload: { reason: "superseded_by_new_turn" },
+  }).payload.status, "interrupted");
+});
+
+test("ACV2 accepts globally ordered cursors when durable runs interleave", () => {
+  const events = [
+    durableRunStatus(1),
+    only({
+      cursor: 2,
+      event_kind: "run_status",
+      run_id: "run-2",
+      payload: { status: "RUNNING" },
+    }),
+    durableRunStatus(3),
+  ];
+
+  let state = createInitialChatState();
+  for (const event of events) {
+    const result = reduceChatEvent(state, event);
+    assert.equal(result.applied, true);
+    state = result.state;
+  }
+  assert.equal(state.streamSequences["thread-1:durable"], 3);
+  assert.equal(state.resyncRequests["thread-1:durable"], undefined);
+});
+
+test("ACV2 durable cursors detect stream gaps, clear resync, and accept the retry", () => {
+  const one = durableRunStatus(1);
+  const two = durableRunStatus(2);
+  const three = durableRunStatus(3);
+  const streamId = one.stream.id;
+  assert.equal(streamId, "thread-1:durable");
+  assert.equal(two.stream.id, streamId);
+  assert.equal(three.stream.id, streamId);
+  assert.notEqual(one.id, three.id);
+
+  let state = reduceChatEvent(createInitialChatState(), one).state;
+  assert.equal(state.streamSequences[streamId], 1);
+
+  const gap = reduceChatEvent(state, three);
+  assert.equal(gap.applied, false);
+  assert.equal(gap.reason, "stream_gap");
+  assert.deepEqual(gap.state.resyncRequests[streamId], {
+    streamId,
+    expectedSequence: 2,
+    receivedSequence: 3,
+    eventId: three.id,
+  });
+  assert.equal(gap.state.streamSequences[streamId], 1);
+
+  const filled = reduceChatEvent(gap.state, two);
+  assert.equal(filled.applied, true);
+  assert.equal(filled.state.streamSequences[streamId], 2);
+  assert.equal(filled.state.resyncRequests[streamId], undefined);
+
+  const retried = reduceChatEvent(filled.state, three);
+  assert.equal(retried.applied, true);
+  assert.equal(retried.state.streamSequences[streamId], 3);
+  assert.equal(retried.state.resyncRequests[streamId], undefined);
+});
+
+test("ACV2 high-water snapshot on the same stream recovers and allows the next cursor", () => {
+  const one = durableRunStatus(1);
+  const three = durableRunStatus(3);
+  const eleven = durableRunStatus(11);
+  const streamId = one.stream.id;
+
+  const gapped = reduceChatEvent(reduceChatEvent(createInitialChatState(), one).state, three);
+  assert.equal(gapped.applied, false);
+  assert.equal(gapped.reason, "stream_gap");
+
+  const snapshot = {
+    protocolVersion: 1,
+    id: "snapshot-hw",
+    type: "thread.snapshot",
+    source: "test",
+    occurredAt: ISO,
+    threadId: "thread-1",
+    stream: { id: streamId, sequence: 10 },
+    payload: {
+      thread: {
+        id: "thread-1",
+        appKey: "test-app",
+        organizationId: "org-1",
+        status: "active",
+      },
+      turns: [],
+      items: [],
+      surfaces: [],
+      interactions: [],
+    },
+  };
+
+  const recovered = reduceChatEvent(gapped.state, snapshot);
+  assert.equal(recovered.applied, true);
+  assert.equal(recovered.state.streamSequences[streamId], 10);
+  assert.equal(recovered.state.resyncRequests[streamId], undefined);
+
+  const advanced = reduceChatEvent(recovered.state, eleven);
+  assert.equal(advanced.applied, true);
+  assert.equal(advanced.state.streamSequences[streamId], 11);
 });

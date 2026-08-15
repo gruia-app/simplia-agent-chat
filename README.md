@@ -7,9 +7,9 @@ Provider-neutral building blocks for agentic chat interfaces. The runtime keeps 
 
 The project is framework-light by design:
 
-- `@simplia/agent-chat-core` — protocol, deterministic reducer, SSE decoder, capability negotiation, surfaces and provider adapters.
-- `@simplia/agent-chat-react` — accessible React shell, composer, timeline, pending interactions and trusted surface registry.
-- `@simplia/agent-chat-adapter-acv2` — optional ACV2 durable-event adapter and provider capability profiles.
+- `simplia-agent-chat/core` — protocol, deterministic reducer, SSE decoder, capability negotiation, surfaces and provider adapters.
+- `simplia-agent-chat/react` — accessible React shell, composer, timeline, pending interactions and trusted surface registry.
+- `simplia-agent-chat/adapters/acv2` — optional ACV2 durable-event adapter and provider capability profiles.
 
 ## Why
 
@@ -27,17 +27,19 @@ flowchart LR
 ## Install
 
 ```bash
-pnpm add @simplia/agent-chat-core @simplia/agent-chat-react
+pnpm add "simplia-agent-chat@github:gruia-app/simplia-agent-chat#<reviewed-commit-sha>"
 ```
 
-React and React DOM are peer dependencies of the React package.
+Pin a reviewed commit SHA or signed release tag; do not consume a floating branch. No npm account, registry scope or publish credential is required. Applications using the React subpath must also install React and React DOM.
+
+Reviewed commits include the compiled ESM and type declarations. Installation does not run build lifecycle scripts, so consumers may keep `ignore-scripts=true`. Node 20 or newer is required; CommonJS-only consumers need an ESM bridge.
 
 ## Minimal React usage
 
 ```tsx
-import { createInitialChatState } from "@simplia/agent-chat-core/state";
-import { AgentChatShell, ReactSurfaceRegistry } from "@simplia/agent-chat-react";
-import "@simplia/agent-chat-react/styles.css";
+import { createInitialChatState } from "simplia-agent-chat/core/state";
+import { AgentChatShell, ReactSurfaceRegistry } from "simplia-agent-chat/react";
+import "simplia-agent-chat/react/styles.css";
 
 const registry = new ReactSurfaceRegistry();
 const state = createInitialChatState();

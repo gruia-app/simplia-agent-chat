@@ -1,7 +1,7 @@
 import {
   createAgentProviderFeatures,
   type ProviderCapabilities,
-} from "@simplia/agent-chat-core/providers";
+} from "simplia-agent-chat/core/providers";
 
 export const ACV2_PROVIDER_CAPABILITIES = {
   claude: {

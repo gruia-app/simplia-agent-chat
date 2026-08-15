@@ -1,24 +1,51 @@
 # Releasing
 
-The packages use Changesets and are published together from the public repository.
+The public Git repository is the distribution channel. Applications consume `simplia-agent-chat` from GitHub and pin a reviewed commit SHA, following the same immutable-reference rule used by Simplia's shared CI library.
 
-## Before release
+No npm organization, registry session, package publication or publish token is part of this release process. The root package and every internal workspace package remain `private: true` to make accidental registry publication fail closed.
 
-1. Ensure every public change has an appropriate changeset.
+Compiled `packages/*/dist` files are versioned alongside their sources. `pnpm check` rebuilds them and fails if the committed artifact differs, while the Git-consumer smoke installs with lifecycle scripts disabled. A consumer therefore never needs the repository's workspace toolchain.
+
+## Consumer contract
+
+Add one direct dependency:
+
+```json
+{
+  "dependencies": {
+    "simplia-agent-chat": "github:gruia-app/simplia-agent-chat#<full-commit-sha>"
+  }
+}
+```
+
+Import only the required subpaths:
+
+- `simplia-agent-chat/core`
+- `simplia-agent-chat/react`
+- `simplia-agent-chat/react/styles.css`
+- `simplia-agent-chat/adapters/acv2`
+
+Commit the consumer lockfile. The dependency declaration documents the reviewed revision and the lockfile records the resolved Git commit.
+
+## Creating a release
+
+1. Add a Changeset for public API changes, including the root `simplia-agent-chat` package that consumers install.
 2. Run `pnpm check` from a clean checkout.
-3. Run `pnpm version-packages` and review versions, changelogs and internal dependency ranges.
-4. Commit the version changes and create a signed release tag.
-5. Run the protected `Publish packages` workflow.
+3. Run `pnpm version-packages` and review the changelog and version.
+4. Commit the version change.
+5. From the reviewed commit already merged into `main`, create and push an annotated GPG- or SSH-signed tag whose name is exactly `v` plus the root `package.json` version (for example, `v0.2.0`). The signing key must be registered with the GitHub account so GitHub reports the tag signature as verified.
+6. The `Create GitHub release` workflow rejects lightweight or unverified tags, version mismatches, tags whose target differs from the checkout, and commits not reachable from `origin/main`. It then reruns the complete verification and creates release notes for the existing tag.
+7. Upgrade each application by reviewing the diff between its pinned SHA and the new SHA, then updating its dependency and lockfile in a normal PR.
 
-The workflow builds and tests all packages, validates tarball contents, then publishes with npm provenance. Publish core before packages that depend on it; Changesets handles the workspace graph.
+Release tags are human-friendly aliases. Production applications should continue to pin the full commit SHA so a moved tag cannot change installed source.
 
-## Required repository configuration
+Example after merging the version commit:
 
-- public GitHub repository under the chosen owner;
-- npm scope ownership for `@simplia`;
-- protected `npm` GitHub environment;
-- `NPM_TOKEN` until trusted publishing is configured;
-- branch protection requiring CI on Node 20 and 22;
-- private vulnerability reporting enabled.
+```bash
+git switch main
+git pull --ff-only origin main
+git tag -s "v$(node -p \"require('./package.json').version\")" -m "Simplia Agent Chat $(node -p \"require('./package.json').version\")"
+git push origin "v$(node -p \"require('./package.json').version\")"
+```
 
-The package names are currently unclaimed in the public npm registry. Availability is not ownership; confirm the `@simplia` scope before the first release.
+Do not publish a release from a local-only commit or use a lightweight tag. Repository rules should restrict creation and updates of `v*` tags to release maintainers; the workflow's verification is an additional fail-closed gate, not a substitute for tag protection.

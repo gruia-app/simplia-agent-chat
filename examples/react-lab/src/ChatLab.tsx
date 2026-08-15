@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { ChatState, JsonValue, PendingInteraction } from "@simplia/agent-chat-core";
-import { AgentChatShell } from "@simplia/agent-chat-react";
+import type { ChatState, JsonValue, PendingInteraction } from "simplia-agent-chat/core";
+import { AgentChatShell } from "simplia-agent-chat/react";
 import {
   CHAT_LAB_FIXTURES,
   appendFixtureUserMessage,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   selectThreadTurns,
   selectTurnItems,
@@ -9,7 +9,7 @@ import {
   type JsonValue,
   type SurfaceActionRef,
   type SurfaceBlock,
-} from "@simplia/agent-chat-core";
+} from "simplia-agent-chat/core";
 import { ReactSurfaceRegistry, SurfaceHost } from "./surface-registry.js";
 
 export interface ChatTimelineProps {
@@ -18,6 +18,7 @@ export interface ChatTimelineProps {
   surfaceRegistry: ReactSurfaceRegistry;
   onSurfaceAction?: ((block: SurfaceBlock, action: SurfaceActionRef, input?: JsonValue) => void) | undefined;
   emptyLabel?: string | undefined;
+  renderMessage?: ((item: ChatItem) => ReactNode) | undefined;
 }
 
 function stringifyDetail(value: JsonValue | undefined): string | null {
@@ -26,7 +27,7 @@ function stringifyDetail(value: JsonValue | undefined): string | null {
   return JSON.stringify(value, null, 2);
 }
 
-function ItemRow({ item }: { item: ChatItem }) {
+function ItemRow({ item, renderMessage }: { item: ChatItem; renderMessage?: ((item: ChatItem) => ReactNode) | undefined }) {
   const text = item.text?.trim();
   const detail = stringifyDetail(item.output ?? item.input);
   const label = item.role === "user" ? "You" : item.title ?? item.toolName ?? item.kind;
@@ -38,7 +39,11 @@ function ItemRow({ item }: { item: ChatItem }) {
         <span>{label}</span>
         <span className={`sac-status sac-status-${item.status}`}>{item.status}</span>
       </div>
-      {text ? <p className={messageLike ? "sac-message-text" : "sac-work-title"}>{text}</p> : null}
+      {text ? (
+        <div className={messageLike ? "sac-message-text" : "sac-work-title"}>
+          {messageLike && renderMessage ? renderMessage(item) : text}
+        </div>
+      ) : null}
       {!messageLike && detail ? (
         <details className="sac-work-detail">
           <summary>Inspect details</summary>
@@ -55,6 +60,7 @@ export function ChatTimeline({
   surfaceRegistry,
   onSurfaceAction,
   emptyLabel = "No messages yet. Send a precise instruction to begin.",
+  renderMessage,
 }: ChatTimelineProps) {
   const turns = useMemo(() => selectThreadTurns(state, threadId), [state, threadId]);
   const surfacesByTurn = useMemo(() => {
@@ -91,7 +97,7 @@ export function ChatTimeline({
       {turns.map((turn) => (
         <section className="sac-turn" key={turn.id} aria-label={`Turn ${turn.status}`}>
           {selectTurnItems(state, turn.id).map((item) => (
-            <ItemRow item={item} key={item.id} />
+            <ItemRow item={item} key={item.id} {...(renderMessage ? { renderMessage } : {})} />
           ))}
           {(surfacesByTurn.get(turn.id) ?? []).map((surface) => (
             <SurfaceHost

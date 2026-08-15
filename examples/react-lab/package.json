@@ -9,8 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@simplia/agent-chat-core": "workspace:*",
-    "@simplia/agent-chat-react": "workspace:*",
+    "simplia-agent-chat": "workspace:*",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

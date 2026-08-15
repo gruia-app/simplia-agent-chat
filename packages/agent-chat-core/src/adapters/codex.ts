@@ -10,7 +10,7 @@ import {
   type ItemStatus,
   type TurnStatus,
 } from "../protocol.js";
-import { event, stableSuffix } from "./shared.js";
+import { event, stableSuffix, threadScopedEntityId, threadScopedTurnId } from "./shared.js";
 
 export interface CodexAppServerMessage {
   id?: string | number;
@@ -82,7 +82,12 @@ function textFromItem(item: Record<string, unknown>): string | undefined {
 function normalizeItem(itemInput: unknown, context: AdapterContext): ChatItem {
   const item = recordValue(itemInput);
   const nativeType = stringValue(item.type) ?? "unknown";
-  const id = stringValue(item.id) ?? `codex-item:${stableSuffix(nativeType, context.sequence)}`;
+  const nativeItemId = stringValue(item.id);
+  const id = threadScopedEntityId(
+    context.threadId,
+    nativeItemId,
+    `codex-item:${stableSuffix(nativeType, context.sequence)}`,
+  );
   const role = nativeType === "userMessage" ? "user" : nativeType === "agentMessage" ? "assistant" : undefined;
   const text = textFromItem(item);
   const command = stringValue(item.command);
@@ -92,7 +97,7 @@ function normalizeItem(itemInput: unknown, context: AdapterContext): ChatItem {
   return {
     id,
     threadId: context.threadId,
-    turnId: context.turnId ?? stringValue(item.turnId) ?? "unknown",
+    turnId: threadScopedTurnId(context.threadId, context.turnId ?? stringValue(item.turnId)),
     kind: itemKind(nativeType),
     status: itemStatus(item.status),
     ...(role ? { role } : {}),
@@ -106,7 +111,10 @@ function normalizeItem(itemInput: unknown, context: AdapterContext): ChatItem {
       : item.error !== null && item.error !== undefined || String(item.status ?? "").toLowerCase() === "failed"
         ? { isError: true }
         : {}),
-    metadata: { nativeType, native: jsonValue(item) },
+    metadata: {
+      nativeType,
+      ...(nativeItemId ? { nativeItemId } : {}),
+    },
   };
 }
 
@@ -126,9 +134,10 @@ export const codexAppServerAdapter: ChatTransportAdapter<CodexAppServerMessage> 
     const turn = recordValue(params.turn);
     const nativeThreadId = stringValue(params.threadId) ?? stringValue(thread.id);
     const nativeTurnId = stringValue(params.turnId) ?? stringValue(turn.id) ?? context.turnId;
+    const scopedTurnId = nativeTurnId ? threadScopedTurnId(context.threadId, nativeTurnId) : undefined;
     const eventContext: AdapterContext = {
       ...context,
-      ...(nativeTurnId ? { turnId: nativeTurnId } : {}),
+      ...(scopedTurnId ? { turnId: scopedTurnId } : {}),
     };
     const provider = {
       provider: "codex",
@@ -146,12 +155,12 @@ export const codexAppServerAdapter: ChatTransportAdapter<CodexAppServerMessage> 
         ...(title ? { title } : {}),
         status: "active",
         provider,
-        metadata: { nativeThread: jsonValue(thread) },
+        metadata: { transport: "codex-app-server" },
       }, provider)];
     }
 
     if (method === "turn/started") {
-      const turnId = nativeTurnId ?? `turn:${context.threadId}`;
+      const turnId = threadScopedTurnId(context.threadId, nativeTurnId);
       return [event("turn.upsert", { ...eventContext, turnId }, suffix, {
         id: turnId,
         threadId: context.threadId,
@@ -186,19 +195,24 @@ export const codexAppServerAdapter: ChatTransportAdapter<CodexAppServerMessage> 
     };
     const deltaConfig = deltaMethods[method];
     if (deltaConfig) {
-      const itemId = stringValue(params.itemId) ?? stringValue(recordValue(params.item).id) ?? `${deltaConfig.kind}:${nativeTurnId ?? "turn"}`;
+      const nativeItemId = stringValue(params.itemId) ?? stringValue(recordValue(params.item).id);
+      const itemId = threadScopedEntityId(
+        context.threadId,
+        nativeItemId,
+        `${deltaConfig.kind}:${nativeTurnId ?? "turn"}`,
+      );
       const delta = stringValue(params.delta) ?? stringValue(params.text) ?? "";
       if (!delta) return [];
       return [event("item.delta", eventContext, suffix, { itemId, delta, field: deltaConfig.field }, provider)];
     }
 
     if (method === "turn/plan/updated" || method === "turn/diff/updated") {
-      const kind = method === "turn/plan/updated" ? "acv2.plan" : "acv2.diff";
+      const kind = method === "turn/plan/updated" ? "codex.plan" : "codex.diff";
       const revision = numberValue(params.revision) ?? context.sequence ?? 1;
       return [event("surface.upsert", eventContext, suffix, {
-        id: `${kind}:${nativeTurnId ?? context.threadId}`,
+        id: threadScopedEntityId(context.threadId, undefined, `${kind}:${nativeTurnId ?? "thread"}`),
         threadId: context.threadId,
-        ...(nativeTurnId ? { turnId: nativeTurnId } : {}),
+        ...(scopedTurnId ? { turnId: scopedTurnId } : {}),
         kind,
         schemaVersion: 1,
         revision,
@@ -217,18 +231,22 @@ export const codexAppServerAdapter: ChatTransportAdapter<CodexAppServerMessage> 
       || method === "execCommandApproval"
     ) {
       const requestId = String(input.id ?? stringValue(params.requestId) ?? suffix);
-      const itemId = stringValue(params.itemId);
+      const nativeItemId = stringValue(params.itemId);
       const description = stringValue(params.reason) ?? stringValue(params.message);
       return [event("interaction.requested", eventContext, suffix, {
-        id: `codex-request:${requestId}`,
+        id: threadScopedEntityId(context.threadId, undefined, `codex-request:${requestId}`),
         threadId: context.threadId,
-        turnId: nativeTurnId ?? "unknown",
-        ...(itemId ? { itemId } : {}),
+        turnId: threadScopedTurnId(context.threadId, nativeTurnId),
+        ...(nativeItemId ? { itemId: threadScopedEntityId(context.threadId, nativeItemId, nativeItemId) } : {}),
         kind: interactionKind(method),
         status: "pending",
         title: method === "item/tool/requestUserInput" ? "Codex needs input" : "Codex requires approval",
         ...(description ? { description } : {}),
-        payload: jsonValue(params),
+        payload: {
+          method,
+          requestId,
+          ...(nativeItemId ? { itemId: nativeItemId } : {}),
+        },
         ...(Array.isArray(params.availableDecisions)
           ? { availableDecisions: params.availableDecisions.map(String) }
           : {}),
@@ -237,9 +255,9 @@ export const codexAppServerAdapter: ChatTransportAdapter<CodexAppServerMessage> 
     }
 
     if (method === "serverRequest/resolved") {
-      const requestId = String(params.requestId ?? params.id ?? "unknown");
+      const requestId = String(params.requestId ?? params.id ?? `request:${stableSuffix(context.sequence)}`);
       return [event("interaction.resolved", eventContext, suffix, {
-        interactionId: `codex-request:${requestId}`,
+        interactionId: threadScopedEntityId(context.threadId, undefined, `codex-request:${requestId}`),
         resolvedAt: context.occurredAt ?? new Date().toISOString(),
       }, provider)];
     }
@@ -261,7 +279,6 @@ export const codexAppServerAdapter: ChatTransportAdapter<CodexAppServerMessage> 
       return [event("warning", eventContext, suffix, {
         code: method,
         message: stringValue(params.message) ?? stringValue(params.error) ?? method,
-        detail: jsonValue(params),
       }, provider)];
     }
 
