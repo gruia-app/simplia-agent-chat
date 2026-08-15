@@ -15,6 +15,44 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+      - name: Verify signed tag, version, and main ancestry
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag_object_type="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${GITHUB_REF_NAME}" --jq '.object.type')"
+          tag_object_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${GITHUB_REF_NAME}" --jq '.object.sha')"
+
+          if [[ "$tag_object_type" != "tag" ]]; then
+            echo "::error::Release tags must be annotated and signed; lightweight tags are rejected."
+            exit 1
+          fi
+
+          tag_verified="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_object_sha}" --jq '.verification.verified')"
+          tag_verification_reason="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_object_sha}" --jq '.verification.reason')"
+          tag_target_type="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_object_sha}" --jq '.object.type')"
+          tag_target_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_object_sha}" --jq '.object.sha')"
+
+          RELEASE_TAG_OBJECT_TYPE="$tag_object_type" \
+          RELEASE_TAG_VERIFIED="$tag_verified" \
+          RELEASE_TAG_VERIFICATION_REASON="$tag_verification_reason" \
+          RELEASE_TAG_TARGET_TYPE="$tag_target_type" \
+          RELEASE_TAG_TARGET_SHA="$tag_target_sha" \
+            node scripts/release-policy-check.mjs
+
+          git fetch --no-tags origin main
+          if [[ "$(git rev-parse HEAD)" != "$tag_target_sha" ]]; then
+            echo "::error::Checked-out commit does not match the signed tag target."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$tag_target_sha" origin/main; then
+            echo "::error::Signed release tag target is not reachable from origin/main."
+            exit 1
+          fi
+
+          echo "Verified signed release tag ${GITHUB_REF_NAME} at ${tag_target_sha}."
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 9.0.0

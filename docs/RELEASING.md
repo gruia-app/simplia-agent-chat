@@ -33,8 +33,19 @@ Commit the consumer lockfile. The dependency declaration documents the reviewed 
 2. Run `pnpm check` from a clean checkout.
 3. Run `pnpm version-packages` and review the changelog and version.
 4. Commit the version change.
-5. Create and push a signed `v*` tag for that exact commit.
-6. The `Create GitHub release` workflow reruns the complete verification and creates release notes for the existing tag.
+5. From the reviewed commit already merged into `main`, create and push an annotated GPG- or SSH-signed tag whose name is exactly `v` plus the root `package.json` version (for example, `v0.2.0`). The signing key must be registered with the GitHub account so GitHub reports the tag signature as verified.
+6. The `Create GitHub release` workflow rejects lightweight or unverified tags, version mismatches, tags whose target differs from the checkout, and commits not reachable from `origin/main`. It then reruns the complete verification and creates release notes for the existing tag.
 7. Upgrade each application by reviewing the diff between its pinned SHA and the new SHA, then updating its dependency and lockfile in a normal PR.
 
 Release tags are human-friendly aliases. Production applications should continue to pin the full commit SHA so a moved tag cannot change installed source.
+
+Example after merging the version commit:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git tag -s "v$(node -p \"require('./package.json').version\")" -m "Simplia Agent Chat $(node -p \"require('./package.json').version\")"
+git push origin "v$(node -p \"require('./package.json').version\")"
+```
+
+Do not publish a release from a local-only commit or use a lightweight tag. Repository rules should restrict creation and updates of `v*` tags to release maintainers; the workflow's verification is an additional fail-closed gate, not a substitute for tag protection.

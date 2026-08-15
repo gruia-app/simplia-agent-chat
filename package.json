@@ -62,9 +62,10 @@
     "test": "pnpm -r --workspace-concurrency=1 run test",
     "test:consumer": "node scripts/external-consumer-smoke.mjs",
     "test:git-consumer": "node scripts/git-consumer-smoke.mjs",
+    "test:release-policy": "node --test scripts/release-policy.test.mjs",
     "dist:check": "node scripts/dist-check.mjs",
     "pack:check": "node scripts/pack-check.mjs",
-    "check": "pnpm run typecheck && pnpm run test && pnpm run pack:check && pnpm run dist:check && pnpm run test:consumer",
+    "check": "pnpm run typecheck && pnpm run test && pnpm run test:release-policy && pnpm run pack:check && pnpm run dist:check && pnpm run test:consumer",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release:check": "pnpm run check"
