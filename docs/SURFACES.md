@@ -75,3 +75,65 @@ A custom `fallback` receives the original block, including payload. The host doe
 ## Actions
 
 Create commands with `createSurfaceActionCommand`. The command binds action, surface revision, thread and idempotency key. The server still owns authorization, validation and execution.
+
+### Durable action receipts
+
+`DOMAIN_ACTIONS_V1` adds a provider-neutral receipt contract for mutations initiated by a trusted surface renderer. The client owns interaction state; the application server still owns authorization, schema validation, compare-and-swap checks, persistence, and the domain mutation.
+
+```ts
+import {
+  createSurfaceActionState,
+  beginSurfaceAction,
+  applySurfaceActionReceipt,
+  type SurfaceActionTransport,
+} from "simplia-agent-chat/core";
+
+const transport: SurfaceActionTransport = {
+  execute: (command, options) => api.executeAction(command, options),
+  getReceipt: (idempotencyKey, options) => api.getActionReceipt(idempotencyKey, options),
+  abandonUnknown: (idempotencyKey, options) => api.abandonAction(idempotencyKey, options),
+};
+
+let state = createSurfaceActionState();
+const started = beginSurfaceAction(state, command);
+if (started.accepted) {
+  const receipt = await transport.execute(command);
+  state = applySurfaceActionReceipt(started.state, started.operationId, receipt);
+}
+```
+
+Receipts have one of these statuses:
+
+- `pending`: accepted but not terminal, including HTTP 202 or an application `in_progress` response;
+- `confirming`: a receipt lookup or explicit abandonment is in flight;
+- `succeeded`: the mutation completed, including an idempotent replay of an earlier success;
+- `conflicted`: the server rejected the bound surface revision or another compare-and-swap precondition;
+- `failed`: the server authoritatively reports failure;
+- `unknown`: a dispatched request has no authoritative outcome.
+
+The pure state machine rejects double submission and ignores stale asynchronous results by operation ID. It captures a deeply cloned and frozen command before dispatch, so later renderer mutations cannot alter the operation. `retrySurfaceAction` is available only after `failed` or `conflicted` when the authoritative error explicitly sets `retryable: true`; missing or false retryability fails closed. A retry takes a fresh immutable snapshot of the captured command and reuses its idempotency key. A pending or unknown action must be reconciled with `getReceipt`; it must not be replayed under a new key.
+
+`actionId` and `surfaceId` are opaque strings. Keep `actionId` as the stable renderer-facing identifier declared by `SurfaceActionRef` (for example, `apply-proposal`); do not require it to be a UUID. An application may use a UUID for `surfaceId` or `receiptId` without making that format part of the shared contract.
+
+Persist the complete `command` and `receipt` pair, plus `abandonedUnknown` when set, needed by `createSurfaceActionState` to recover after reload. Hydration rejects a command without a receipt, a receipt without a command, and mismatched keys. A persisted `confirming` receipt has no live request after reload, so hydration safely normalizes it to reconciliable `unknown`. Pending and confirming receipts never retain stale `result` or `error` fields. If a receipt lookup fails, an authoritative prior `pending` receipt stays pending; an unknown outcome stays unknown. Do not persist provider credentials in either object.
+
+Abandoning `unknown` requires `acknowledgePossibleEffects: true`. It tells the server that the operator accepts that effects may already have happened. It is terminal for that controller: once dispatched, `abandonedUnknown` must be persisted and no later receipt can enable `execute` retry, even if a remote failure incorrectly says `retryable: true`. It is not a retry, does not call `execute`, and must not be presented as proof that the original mutation did or did not run.
+
+### React controller
+
+`useSurfaceAction` wraps the same state machine without rendering domain UI:
+
+```tsx
+const action = useSurfaceAction({ transport, initialState: persistedAction });
+
+<button
+  type="button"
+  disabled={action.busy}
+  aria-busy={action.busy}
+  onClick={() => void action.execute(command)}
+>
+  Apply proposal
+</button>
+```
+
+The consuming application is responsible for accessible labels, confirmation UI for dangerous actions, and safe rendering of receipt results. The hook exposes `execute`, `retry`, `reconcile`, and `abandonUnknown`; it contains no provider callbacks, credentials, application URLs, or business mutation logic. Every transport call receives an `AbortSignal`, and the active signal is aborted when the component unmounts. A transport should honor that signal, although the hook also fences late results and never waits for cancellation during unmount.
