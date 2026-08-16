@@ -44,6 +44,8 @@ const required = [
   "package.json",
   "packages/agent-chat-core/dist/index.js",
   "packages/agent-chat-core/dist/index.d.ts",
+  "packages/agent-chat-core/dist/domain-actions.js",
+  "packages/agent-chat-core/dist/domain-actions.d.ts",
   "packages/agent-chat-core/dist/protocol.js",
   "packages/agent-chat-core/dist/state.js",
   "packages/agent-chat-core/dist/adapters/shared.js",
@@ -51,6 +53,8 @@ const required = [
   "packages/agent-chat-adapter-acv2/dist/index.d.ts",
   "packages/agent-chat-react/dist/index.js",
   "packages/agent-chat-react/dist/index.d.ts",
+  "packages/agent-chat-react/dist/use-surface-action.js",
+  "packages/agent-chat-react/dist/use-surface-action.d.ts",
   "packages/agent-chat-react/dist/styles.css",
 ];
 for (const requiredFile of required) {

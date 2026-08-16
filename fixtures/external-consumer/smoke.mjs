@@ -3,6 +3,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { createInitialChatState, reduceChatEvent } from "simplia-agent-chat/core/state";
+import {
+  beginSurfaceAction,
+  createSurfaceActionState,
+} from "simplia-agent-chat/core";
 import { hasGrantedCapability } from "simplia-agent-chat/core/providers";
 import {
   ACV2_PROVIDER_CAPABILITIES,
@@ -13,7 +17,23 @@ import {
   ChatComposer,
   ReactSurfaceRegistry,
   SurfaceHost,
+  useSurfaceAction,
 } from "simplia-agent-chat/react";
+
+assert.equal(typeof beginSurfaceAction, "function");
+assert.equal(typeof createSurfaceActionState, "function");
+assert.equal(typeof useSurfaceAction, "function");
+
+const surfaceAction = beginSurfaceAction(createSurfaceActionState(), {
+  idempotencyKey: "consumer-action-key",
+  threadId: "thread-1",
+  surfaceId: "surface-1",
+  revision: 1,
+  actionId: "apply-proposal",
+  action: "consumer.proposal.apply",
+});
+assert.equal(surfaceAction.accepted, true);
+assert.equal(surfaceAction.state.receipt.status, "pending");
 
 const [event] = acv2PmAdapter.normalize({
   event_kind: "message_completed",
