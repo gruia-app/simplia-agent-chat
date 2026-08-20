@@ -50,8 +50,14 @@ export function Chat() {
       state={state}
       threadId="thread-1"
       title="Assistant"
+      headerLabel="Mesa de operaciones"
+      theme="light"
       surfaceRegistry={registry}
-      composerAriaLabel="Message the assistant"
+      composerAriaLabel="Mensaje para el asistente"
+      copy={{
+        composerSubmitLabel: "Enviar",
+        decisionLabel: (decision) => decision === "approve" ? "Aprobar" : decision,
+      }}
       onSubmit={async (message) => console.log(message)}
       onResolveInteraction={async (interaction, resolution) =>
         console.log(interaction.id, resolution)
@@ -61,7 +67,7 @@ export function Chat() {
 }
 ```
 
-The application owns transport, authentication, persistence, policy enforcement and domain mutations. The UI only emits decisions and surface actions; the server must validate them again.
+The application owns transport, authentication, persistence, policy enforcement and domain mutations. The UI only emits decisions and surface actions; the server must validate them again. `copy` and granular labels (`emptyLabel`, `composerPlaceholder`, `artifactStageLabel`) change display text only: event IDs, decision values, status values and payloads stay protocol data. Granular props win over `copy`, which wins over English defaults. The shell has no library brand unless the application passes `headerLabel`. See [theming](docs/THEMING.md) and [integration](docs/INTEGRATION.md).
 
 Surfaces may set `presentation.preferredSurface` to `inline` (the default), `panel`, or `fullscreen`. Inline surfaces stay in the transcript. Panel surfaces use an additive artifact stage, which a host can replace through `renderArtifactStage`. Fullscreen surfaces stay host-owned through `renderFullscreenSurfaces` and are never inlined or shown in a library modal.
 
@@ -74,7 +80,7 @@ Surfaces may set `presentation.preferredSurface` to `inline` (the default), `pan
 - Domain surfaces are registered by the consuming application.
 - Chat-completion APIs never pretend to have filesystem, terminal or approval capabilities.
 
-See [Architecture](docs/ARCHITECTURE.md), [Integration guide](docs/INTEGRATION.md), [Surface plugins](docs/SURFACES.md) and [security policy](SECURITY.md).
+See [Architecture](docs/ARCHITECTURE.md), [Integration guide](docs/INTEGRATION.md), [Surface plugins](docs/SURFACES.md), [Theming](docs/THEMING.md) and [security policy](SECURITY.md).
 
 ## Interactive lab
 

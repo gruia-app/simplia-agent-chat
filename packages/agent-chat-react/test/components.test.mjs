@@ -11,9 +11,11 @@ import {
   ChatComposer,
   ChatTimeline,
   createInteractionResolutionState,
+  defaultAgentChatCopy,
   isAffirmativeDecision,
   PendingInteractions,
   ReactSurfaceRegistry,
+  resolveAgentChatCopy,
   selectApprovalDecision,
   SurfaceHost,
   unlockInteractionResolution,
@@ -954,4 +956,456 @@ test("default stage action callbacks keep the bound action identity", async () =
 
     await act(async () => root.unmount());
   });
+});
+
+test("partial copy overrides fall back to defaults without mutating defaultAgentChatCopy", () => {
+  const originalEmpty = defaultAgentChatCopy.emptyLabel;
+  const originalDecision = defaultAgentChatCopy.decisionLabel("approve");
+  assert.ok(Object.isFrozen(defaultAgentChatCopy));
+
+  const resolved = resolveAgentChatCopy({
+    emptyLabel: "Todavía no hay mensajes.",
+    decisionLabel: (decision) => decision === "approve" ? "Aprobar" : decision,
+  });
+
+  assert.ok(Object.isFrozen(resolved));
+  assert.equal(resolved.emptyLabel, "Todavía no hay mensajes.");
+  assert.equal(resolved.decisionLabel("approve"), "Aprobar");
+  assert.equal(resolved.composerSubmitLabel, defaultAgentChatCopy.composerSubmitLabel);
+  assert.equal(resolved.jumpToLive, defaultAgentChatCopy.jumpToLive);
+  assert.equal(defaultAgentChatCopy.emptyLabel, originalEmpty);
+  assert.equal(defaultAgentChatCopy.decisionLabel("approve"), originalDecision);
+  assert.equal(resolveAgentChatCopy().emptyLabel, originalEmpty);
+  assert.strictEqual(resolveAgentChatCopy(resolved), resolved);
+});
+
+test("shell has no library brand by default and renders application headerLabel", () => {
+  const withoutBrand = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: emptyState,
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+  assert.doesNotMatch(withoutBrand, /SHARED_AGENT_CHAT/);
+  assert.doesNotMatch(withoutBrand, /sac-header-label/);
+  assert.doesNotMatch(withoutBrand, /data-sac-theme/);
+
+  const withLabel = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: emptyState,
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      headerLabel: "Mesa de operaciones",
+      theme: "light",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+  assert.match(withLabel, /sac-header-label/);
+  assert.match(withLabel, /Mesa de operaciones/);
+  assert.match(withLabel, /data-sac-theme="light"/);
+  assert.equal(withLabel.split("data-sac-theme=\"light\"").length - 1, 1);
+  assert.doesNotMatch(withLabel, /SHARED_AGENT_CHAT/);
+});
+
+test("shell copy overrides reach timeline, composer, interactions, artifact stage and fallbacks", () => {
+  const state = {
+    ...placementState([
+      {
+        id: "surface-unknown-panel",
+        threadId,
+        kind: "external.untrusted-widget",
+        schemaVersion: 2,
+        revision: 1,
+        status: "ready",
+        payload: { secret: "copy-payload-must-not-render" },
+        presentation: { title: "Unknown panel", preferredSurface: "panel" },
+      },
+    ]),
+    interactions: {
+      "approval-copy": {
+        id: "approval-copy",
+        threadId,
+        kind: "approval",
+        status: "pending",
+        title: "¿Publicar?",
+        payload: { secret: "copy-interaction-secret" },
+        availableDecisions: ["approve"],
+      },
+    },
+  };
+  const html = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state,
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      copy: {
+        emptyLabel: "must-not-win-over-messages",
+        artifactStageLabel: "Espacio de revisión",
+        composerPlaceholder: "Describe la siguiente acción",
+        composerSubmitLabel: "Enviar",
+        pendingInteractionsLabel: "Interacciones pendientes",
+        approvalRequiredLabel: "REQUIERE_APROBACION",
+        surfaceUnavailableLabel: "SUPERFICIE_NO_DISPONIBLE",
+        surfaceUnknownMessage: (kind, version) => `Sin renderer para ${kind} v${version}`,
+      },
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+
+  assert.match(html, />Espacio de revisión</);
+  assert.match(html, /placeholder="Describe la siguiente acción"/);
+  assert.match(html, />Enviar</);
+  assert.match(html, /aria-label="Interacciones pendientes"/);
+  assert.match(html, /REQUIERE_APROBACION/);
+  assert.match(html, /SUPERFICIE_NO_DISPONIBLE/);
+  assert.match(html, /Sin renderer para external\.untrusted-widget v2/);
+  assert.doesNotMatch(html, /copy-payload-must-not-render/);
+  assert.doesNotMatch(html, /copy-interaction-secret/);
+  assert.doesNotMatch(html, />Artifacts</);
+  assert.doesNotMatch(html, />Send</);
+});
+
+test("standalone components accept copy overrides", () => {
+  const composer = renderToStaticMarkup(
+    createElement(ChatComposer, {
+      ariaLabel: "Standalone composer",
+      onSubmit() {},
+      copy: {
+        composerPlaceholder: "Instrucción",
+        composerSubmitLabel: "Enviar",
+        composerHint: "Enter envía",
+      },
+      theme: "light",
+    }),
+  );
+  assert.match(composer, /class="sac-composer sac-theme"/);
+  assert.match(composer, /data-sac-theme="light"/);
+  assert.match(composer, /placeholder="Instrucción"/);
+  assert.match(composer, />Enviar</);
+  assert.match(composer, /Enter envía/);
+
+  const timeline = renderToStaticMarkup(
+    createElement(ChatTimeline, {
+      state: emptyState,
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      copy: { emptyLabel: "Sin mensajes todavía." },
+    }),
+  );
+  assert.match(timeline, /Sin mensajes todavía\./);
+  assert.match(timeline, /sac-theme/);
+
+  const interactions = renderToStaticMarkup(
+    createElement(PendingInteractions, {
+      interactions: [{
+        id: "q-1",
+        threadId,
+        kind: "question",
+        status: "pending",
+        title: "¿Canal?",
+        payload: { secret: "standalone-question-secret" },
+      }],
+      copy: {
+        pendingInteractionsLabel: "Pendientes",
+        inputRequiredLabel: "ENTRADA_REQUERIDA",
+        answerLabel: (title) => `Respuesta para ${title}`,
+        submitAnswerLabel: "Enviar respuesta",
+      },
+      onResolve() {},
+    }),
+  );
+  assert.match(interactions, /aria-label="Pendientes"/);
+  assert.match(interactions, /ENTRADA_REQUERIDA/);
+  assert.match(interactions, /Respuesta para ¿Canal\?/);
+  assert.match(interactions, /Enviar respuesta/);
+  assert.doesNotMatch(interactions, /standalone-question-secret/);
+
+  const surface = renderToStaticMarkup(
+    createElement(SurfaceHost, {
+      block: {
+        id: "unknown-copy",
+        threadId,
+        kind: "app.unknown",
+        schemaVersion: 3,
+        revision: 1,
+        status: "ready",
+        payload: { secret: "host-copy-secret" },
+      },
+      registry: new ReactSurfaceRegistry(),
+      copy: {
+        surfaceUnavailableLabel: "NO_DISPONIBLE",
+        surfaceUnknownMessage: (kind, version) => `Falta ${kind}@${version}`,
+      },
+    }),
+  );
+  assert.match(surface, /NO_DISPONIBLE/);
+  assert.match(surface, /Falta app\.unknown@3/);
+  assert.doesNotMatch(surface, /host-copy-secret/);
+});
+
+test("dynamic copy formatters receive only documented primitive arguments", () => {
+  const received = [];
+  const populatedState = {
+    ...emptyState,
+    threads: {
+      [threadId]: { id: threadId, appKey: "test", status: "active" },
+    },
+    turns: {
+      "turn-1": {
+        id: "turn-1",
+        threadId,
+        status: "completed",
+        itemIds: ["message-1", "tool-1"],
+      },
+    },
+    items: {
+      "message-1": {
+        id: "message-1",
+        threadId,
+        turnId: "turn-1",
+        kind: "message",
+        status: "completed",
+        role: "assistant",
+        text: "Evidence is ready.",
+        output: { secret: "item-output-secret" },
+      },
+      "tool-1": {
+        id: "tool-1",
+        threadId,
+        turnId: "turn-1",
+        kind: "tool",
+        status: "completed",
+        title: "Inspect repo",
+        output: { secret: "tool-output-secret" },
+      },
+    },
+  };
+
+  const html = renderToStaticMarkup(
+    createElement(ChatTimeline, {
+      state: populatedState,
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      copy: {
+        itemStatusLabel: (status) => {
+          received.push(["itemStatus", status]);
+          return `estado:${status}`;
+        },
+        itemAriaLabel: (label, status) => {
+          received.push(["itemAria", label, status]);
+          return `${label}/${status}`;
+        },
+        turnAriaLabel: (status) => {
+          received.push(["turn", status]);
+          return `turno ${status}`;
+        },
+      },
+    }),
+  );
+
+  const surfaceHtml = renderToStaticMarkup(
+    createElement(SurfaceHost, {
+      block: {
+        id: "unknown-args",
+        threadId,
+        kind: "app.chart",
+        schemaVersion: 4,
+        revision: 1,
+        status: "ready",
+        presentation: { title: "Trusted chart" },
+        payload: { secret: "surface-args-secret" },
+      },
+      registry: new ReactSurfaceRegistry(),
+      copy: {
+        surfaceUnknownMessage: (kind, version) => {
+          received.push(["unknown", kind, version]);
+          return `missing ${kind} ${version}`;
+        },
+        surfaceFallbackAriaLabel: (kind, version, title) => {
+          received.push(["fallbackAria", kind, version, title]);
+          return `${title}:${kind}:${version}`;
+        },
+        surfaceKindLabel: (kind) => {
+          received.push(["kind", kind]);
+          return kind;
+        },
+      },
+    }),
+  );
+
+  assert.match(html, /estado:completed/);
+  assert.match(html, /turno completed/);
+  assert.match(surfaceHtml, /missing app\.chart 4/);
+  assert.doesNotMatch(surfaceHtml, /surface-args-secret/);
+  assert.ok(received.length > 0);
+  for (const entry of received) {
+    for (const value of entry.slice(1)) {
+      assert.equal(["string", "number", "undefined"].includes(typeof value), true, String(value));
+    }
+  }
+});
+
+test("translated decision labels preserve the original decision identity", async () => {
+  await withDom(async ({ document }) => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const received = [];
+
+    await act(async () => {
+      root.render(createElement(PendingInteractions, {
+        interactions: [{
+          id: "approval-translated",
+          threadId,
+          kind: "approval",
+          status: "pending",
+          title: "¿Aplicar el cambio?",
+          payload: { secret: "translated-decision-secret" },
+          availableDecisions: ["approve", "deny"],
+        }],
+        copy: {
+          decisionLabel: (decision) => {
+            if (decision === "approve") return "Aprobar";
+            if (decision === "deny") return "Rechazar";
+            return decision;
+          },
+          confirmDecisionLabel: (decision) => decision === "approve" ? "Confirmar aprobar" : `Confirmar ${decision}`,
+          confirmChoicePrefix: "Confirmar decisión:",
+        },
+        onResolve(interaction, resolution) {
+          received.push({ interaction, resolution });
+        },
+      }));
+    });
+
+    const choose = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent === "Aprobar");
+    assert.ok(choose);
+    await act(async () => choose.click());
+    assert.match(container.textContent, /Confirmar decisión:\s*Aprobar/);
+
+    const confirm = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent === "Confirmar aprobar");
+    assert.ok(confirm);
+    await act(async () => confirm.click());
+
+    assert.equal(received.length, 1);
+    assert.deepEqual(received[0].resolution, { decision: "approve" });
+    assert.equal(received[0].interaction.id, "approval-translated");
+    assert.doesNotMatch(container.textContent, /translated-decision-secret/);
+
+    await act(async () => root.unmount());
+  });
+});
+
+test("throwing copy formatters fail closed without payload or exception text", () => {
+  const exceptionText = "formatter-secret-must-not-render";
+  const payloadSecret = "throwing-copy-payload";
+  const resolved = resolveAgentChatCopy({
+    decisionLabel() {
+      throw new Error(exceptionText);
+    },
+    surfaceUnknownMessage() {
+      throw new Error(exceptionText);
+    },
+    itemStatusLabel() {
+      throw new Error(exceptionText);
+    },
+  });
+  assert.equal(resolved.decisionLabel("approve"), "approve");
+  assert.match(resolved.surfaceUnknownMessage("app.table", 1), /app\.table v1/);
+  assert.equal(resolved.itemStatusLabel("completed"), "completed");
+
+  const html = renderToStaticMarkup(
+    createElement(SurfaceHost, {
+      block: {
+        id: "throw-copy",
+        threadId,
+        kind: "app.secret",
+        schemaVersion: 1,
+        revision: 1,
+        status: "ready",
+        payload: { secret: payloadSecret },
+      },
+      registry: new ReactSurfaceRegistry(),
+      copy: {
+        surfaceUnknownMessage() {
+          throw new Error(exceptionText);
+        },
+        surfaceFallbackAriaLabel() {
+          throw new Error(exceptionText);
+        },
+      },
+    }),
+  );
+  assert.match(html, /SURFACE_UNAVAILABLE/);
+  assert.match(html, /No trusted renderer is registered for app\.secret v1/);
+  assert.doesNotMatch(html, new RegExp(exceptionText));
+  assert.doesNotMatch(html, new RegExp(payloadSecret));
+});
+
+test("explicit granular props keep precedence over copy overrides", () => {
+  const composer = renderToStaticMarkup(
+    createElement(ChatComposer, {
+      ariaLabel: "Message application copilot",
+      onSubmit() {},
+      placeholder: "Prop placeholder",
+      submitLabel: "Prop send",
+      hint: "Prop hint",
+      copy: {
+        composerPlaceholder: "Copy placeholder",
+        composerSubmitLabel: "Copy send",
+        composerHint: "Copy hint",
+      },
+    }),
+  );
+  assert.match(composer, /placeholder="Prop placeholder"/);
+  assert.match(composer, />Prop send</);
+  assert.match(composer, /Prop hint/);
+  assert.doesNotMatch(composer, /Copy placeholder/);
+  assert.doesNotMatch(composer, /Copy send/);
+
+  const html = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: placementState([{
+        id: "surface-panel",
+        threadId,
+        kind: "test.artifact",
+        schemaVersion: 1,
+        revision: 1,
+        status: "ready",
+        payload: {},
+        presentation: { title: "Panel artifact", preferredSurface: "panel" },
+      }]),
+      threadId,
+      surfaceRegistry: createActionRegistry(),
+      title: "Application copilot",
+      emptyLabel: "Prop empty",
+      composerPlaceholder: "Prop composer",
+      artifactStageLabel: "Prop artifacts",
+      composerAriaLabel: "Message application copilot",
+      copy: {
+        emptyLabel: "Copy empty",
+        composerPlaceholder: "Copy composer",
+        artifactStageLabel: "Copy artifacts",
+      },
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+  assert.match(html, /placeholder="Prop composer"/);
+  assert.match(html, />Prop artifacts</);
+  assert.doesNotMatch(html, /Copy composer/);
+  assert.doesNotMatch(html, /Copy artifacts/);
 });

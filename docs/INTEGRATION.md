@@ -81,8 +81,23 @@ The shell is controlled. The application owns state, send/interrupt APIs and int
   state={state}
   threadId={threadId}
   title="Assistant"
+  headerLabel="Mesa de operaciones"
+  theme="light"
   surfaceRegistry={surfaceRegistry}
-  composerAriaLabel="Message the assistant"
+  composerAriaLabel="Mensaje para el asistente"
+  emptyLabel="Todavía no hay mensajes. Envía una instrucción precisa para empezar."
+  composerPlaceholder="Describe la siguiente acción…"
+  copy={{
+    composerSubmitLabel: "Enviar",
+    composerHint: "Enter envía · Mayús+Enter nueva línea",
+    decisionLabel: (decision) => {
+      if (decision === "approve") return "Aprobar";
+      if (decision === "deny") return "Rechazar";
+      return decision;
+    },
+    confirmDecisionLabel: (decision) =>
+      decision === "approve" ? "Confirmar aprobar" : `Confirmar ${decision}`,
+  }}
   onSubmit={(message) => api.startTurn({ threadId, message })}
   onResolveInteraction={(interaction, resolution) =>
     api.resolveInteraction({ interactionId: interaction.id, resolution })
@@ -90,9 +105,13 @@ The shell is controlled. The application owns state, send/interrupt APIs and int
   onSurfaceAction={(block, action, input) =>
     api.dispatchSurfaceAction({ block, action, input })
   }
-  artifactStageLabel="Review workspace"
+  artifactStageLabel="Espacio de revisión"
 />
 ```
+
+Copy changes display labels, hints and ARIA text only. Event IDs, `onResolve` decision values, status values and payloads stay protocol data: clicking **Aprobar** still submits `{ decision: "approve" }`.
+
+Granular props win over `copy`, which wins over the English defaults: `emptyLabel` / `composerPlaceholder` / `artifactStageLabel` / `ChatComposer` `placeholder` `submitLabel` `hint`. The shell has no library brand; pass `headerLabel` when the application wants a small owner label. `theme` is `"dark" | "light"`; omitted keeps the dark compatibility palette. See [Theming](THEMING.md).
 
 `presentation.preferredSurface` is a layout hint. Missing or unknown values default to `inline` and stay in the transcript. `panel` surfaces are omitted from the timeline and rendered once through `SurfaceHost` in a default artifact stage. `fullscreen` surfaces are host-owned: the shell does not inline them or open a library modal.
 

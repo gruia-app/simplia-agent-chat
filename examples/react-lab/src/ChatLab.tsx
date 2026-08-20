@@ -64,6 +64,8 @@ export function ChatLab() {
         surfaceRegistry={chatLabSurfaceRegistry}
         title={state.threads[fixture.threadId]?.title ?? fixture.label}
         subtitle={`${fixture.description} · ${state.threads[fixture.threadId]?.provider?.provider ?? "provider"}`}
+        headerLabel="Operations desk"
+        theme="light"
         composerAriaLabel={`Message the ${fixture.label} agent`}
         composerPlaceholder={`Send an instruction to ${fixture.label}…`}
         onSubmit={(message) => {

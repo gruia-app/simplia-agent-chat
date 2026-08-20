@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { type ChatState, type ChatItem, type JsonValue, type PendingInteraction, type SurfaceActionRef, type SurfaceBlock } from "simplia-agent-chat/core";
 import { type ChatComposerProps } from "./ChatComposer.js";
+import { type AgentChatCopyOverrides, type AgentChatTheme } from "./copy.js";
 import { ReactSurfaceRegistry } from "./surface-registry.js";
 export interface AgentChatSurfaceSlotProps {
     surfaces: SurfaceBlock[];
@@ -27,6 +28,9 @@ export interface AgentChatShellProps {
     artifactStageLabel?: string | undefined;
     renderArtifactStage?: ((props: AgentChatSurfaceSlotProps) => ReactNode) | undefined;
     renderFullscreenSurfaces?: ((props: AgentChatSurfaceSlotProps) => ReactNode) | undefined;
+    copy?: AgentChatCopyOverrides | undefined;
+    theme?: AgentChatTheme | undefined;
+    headerLabel?: ReactNode | undefined;
 }
-export declare function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy, toolbar, contextRail, emptyLabel, composer, renderMessage, artifactStageLabel, renderArtifactStage, renderFullscreenSurfaces, }: AgentChatShellProps): import("react").JSX.Element;
+export declare function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy, toolbar, contextRail, emptyLabel, composer, renderMessage, artifactStageLabel, renderArtifactStage, renderFullscreenSurfaces, copy, theme, headerLabel, }: AgentChatShellProps): import("react").JSX.Element;
 //# sourceMappingURL=AgentChatShell.d.ts.map

@@ -1,7 +1,8 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { Component } from "react";
-import { SurfaceRegistry, unknownSurfaceSummary, } from "simplia-agent-chat/core";
+import { SurfaceRegistry, } from "simplia-agent-chat/core";
+import { resolveAgentChatCopy, sacThemeAttributes, } from "./copy.js";
 class SurfaceErrorBoundary extends Component {
     state = { failed: false };
     static getDerivedStateFromError() {
@@ -38,24 +39,26 @@ export class ReactSurfaceRegistry {
 function trustedPresentationTitle(block) {
     return block.presentation?.title?.trim() || block.kind;
 }
-function SafeSurfaceFallback({ block, reason }) {
-    return (_jsxs("section", { className: "sac-surface-fallback", "aria-label": unknownSurfaceSummary(block), children: [_jsx("span", { className: "sac-eyebrow", children: "SURFACE_UNAVAILABLE" }), _jsx("strong", { children: trustedPresentationTitle(block) }), _jsx("p", { children: reason === "invalid"
-                    ? "This surface payload did not pass its local schema."
-                    : `No trusted renderer is registered for ${block.kind} v${block.schemaVersion}.` })] }));
+function SafeSurfaceFallback({ block, reason, copy, theme, }) {
+    const title = block.presentation?.title?.trim() || undefined;
+    return (_jsxs("section", { className: "sac-surface-fallback sac-theme", "aria-label": copy.surfaceFallbackAriaLabel(block.kind, block.schemaVersion, title), ...sacThemeAttributes(theme), children: [_jsx("span", { className: "sac-eyebrow", children: copy.surfaceUnavailableLabel }), _jsx("strong", { children: trustedPresentationTitle(block) }), _jsx("p", { children: reason === "invalid"
+                    ? copy.surfaceInvalidMessage
+                    : copy.surfaceUnknownMessage(block.kind, block.schemaVersion) })] }));
 }
-function renderSafeFallback(block, reason, fallback) {
-    return _jsx(_Fragment, { children: fallback?.(block, reason) ?? _jsx(SafeSurfaceFallback, { block: block, reason: reason }) });
+function renderSafeFallback(block, reason, fallback, copy, theme) {
+    return _jsx(_Fragment, { children: fallback?.(block, reason) ?? _jsx(SafeSurfaceFallback, { block: block, reason: reason, copy: copy, theme: theme }) });
 }
-export function SurfaceHost({ block, registry, onAction, fallback }) {
+export function SurfaceHost({ block, registry, onAction, fallback, copy, theme }) {
+    const resolved = resolveAgentChatCopy(copy);
     let decoded;
     try {
         decoded = registry.decode(block);
     }
     catch {
-        return renderSafeFallback(block, "invalid", fallback);
+        return renderSafeFallback(block, "invalid", fallback, resolved, theme);
     }
     if (!decoded) {
-        return renderSafeFallback(block, "unknown", fallback);
+        return renderSafeFallback(block, "unknown", fallback, resolved, theme);
     }
     let a11yLabel;
     let heading;
@@ -64,11 +67,11 @@ export function SurfaceHost({ block, registry, onAction, fallback }) {
         heading = decoded.block.presentation?.title ?? decoded.plugin.summarize(decoded.block.payload);
     }
     catch {
-        return renderSafeFallback(block, "invalid", fallback);
+        return renderSafeFallback(block, "invalid", fallback, resolved, theme);
     }
     const Renderer = decoded.plugin.component;
-    const invalidFallback = renderSafeFallback(block, "invalid", fallback);
-    return (_jsxs("section", { className: "sac-surface", "aria-label": a11yLabel, children: [_jsxs("div", { className: "sac-surface-heading", children: [_jsxs("div", { children: [_jsx("span", { className: "sac-eyebrow", children: decoded.block.kind }), _jsx("strong", { children: heading })] }), _jsx("span", { className: `sac-status sac-status-${decoded.block.status}`, children: decoded.block.status })] }), _jsx(SurfaceErrorBoundary, { fallback: invalidFallback, children: _jsx(Renderer, { block: decoded.block, ...(onAction
+    const invalidFallback = renderSafeFallback(block, "invalid", fallback, resolved, theme);
+    return (_jsxs("section", { className: "sac-surface sac-theme", "aria-label": a11yLabel, ...sacThemeAttributes(theme), children: [_jsxs("div", { className: "sac-surface-heading", children: [_jsxs("div", { children: [_jsx("span", { className: "sac-eyebrow", children: resolved.surfaceKindLabel(decoded.block.kind) }), _jsx("strong", { children: heading })] }), _jsx("span", { className: `sac-status sac-status-${decoded.block.status}`, children: resolved.surfaceStatusLabel(decoded.block.status) })] }), _jsx(SurfaceErrorBoundary, { fallback: invalidFallback, children: _jsx(Renderer, { block: decoded.block, ...(onAction
                         ? { onAction: (action, input) => onAction(decoded.block, action, input) }
                         : {}) }) }, `${block.id}:${block.revision}`)] }));
 }
