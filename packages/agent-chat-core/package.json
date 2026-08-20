@@ -25,6 +25,16 @@
       "import": "./dist/state.js",
       "default": "./dist/state.js"
     },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.js",
+      "default": "./dist/runtime.js"
+    },
+    "./persistence": {
+      "types": "./dist/persistence.d.ts",
+      "import": "./dist/persistence.js",
+      "default": "./dist/persistence.js"
+    },
     "./surfaces": {
       "types": "./dist/surfaces.d.ts",
       "import": "./dist/surfaces.js",
