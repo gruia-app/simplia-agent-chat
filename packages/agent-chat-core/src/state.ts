@@ -459,3 +459,21 @@ export function selectPendingInteraction(state: ChatState, threadId: string): Pe
     (interaction) => interaction.threadId === threadId && interaction.status === "pending",
   );
 }
+
+export type SurfacePreferredPlacement = "inline" | "panel" | "fullscreen";
+
+function resolveSurfacePlacement(block: SurfaceBlock): SurfacePreferredPlacement {
+  const preferred = block.presentation?.preferredSurface;
+  return preferred === "panel" || preferred === "fullscreen" ? preferred : "inline";
+}
+
+export function selectThreadSurfaces(
+  state: ChatState,
+  threadId: string,
+  preferredSurface?: SurfacePreferredPlacement,
+): SurfaceBlock[] {
+  return Object.values(state.surfaces).filter((surface) => {
+    if (surface.threadId !== threadId) return false;
+    return preferredSurface === undefined || resolveSurfacePlacement(surface) === preferredSurface;
+  });
+}

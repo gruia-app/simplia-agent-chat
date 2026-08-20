@@ -403,4 +403,15 @@ export function selectTurnItems(state, turnId) {
 export function selectPendingInteraction(state, threadId) {
     return Object.values(state.interactions).find((interaction) => interaction.threadId === threadId && interaction.status === "pending");
 }
+function resolveSurfacePlacement(block) {
+    const preferred = block.presentation?.preferredSurface;
+    return preferred === "panel" || preferred === "fullscreen" ? preferred : "inline";
+}
+export function selectThreadSurfaces(state, threadId, preferredSurface) {
+    return Object.values(state.surfaces).filter((surface) => {
+        if (surface.threadId !== threadId)
+            return false;
+        return preferredSurface === undefined || resolveSurfacePlacement(surface) === preferredSurface;
+    });
+}
 //# sourceMappingURL=state.js.map

@@ -32,4 +32,6 @@ export declare function replayChatEvents(events: Iterable<ChatEvent>, initial?: 
 export declare function selectThreadTurns(state: ChatState, threadId: string): ChatTurn[];
 export declare function selectTurnItems(state: ChatState, turnId: string): ChatItem[];
 export declare function selectPendingInteraction(state: ChatState, threadId: string): PendingInteraction | undefined;
+export type SurfacePreferredPlacement = "inline" | "panel" | "fullscreen";
+export declare function selectThreadSurfaces(state: ChatState, threadId: string, preferredSurface?: SurfacePreferredPlacement): SurfaceBlock[];
 //# sourceMappingURL=state.d.ts.map

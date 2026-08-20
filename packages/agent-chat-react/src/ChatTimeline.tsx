@@ -2,6 +2,7 @@
 
 import { useMemo, type ReactNode } from "react";
 import {
+  selectThreadSurfaces,
   selectThreadTurns,
   selectTurnItems,
   type ChatItem,
@@ -65,13 +66,12 @@ export function ChatTimeline({
   const turns = useMemo(() => selectThreadTurns(state, threadId), [state, threadId]);
   const surfacesByTurn = useMemo(() => {
     const next = new Map<string, SurfaceBlock[]>();
-    for (const surface of Object.values(state.surfaces)) {
-      if (surface.threadId !== threadId) continue;
+    for (const surface of selectThreadSurfaces(state, threadId, "inline")) {
       const key = surface.turnId ?? "thread";
       next.set(key, [...(next.get(key) ?? []), surface]);
     }
     return next;
-  }, [state.surfaces, threadId]);
+  }, [state, threadId]);
 
   if (turns.length === 0 && (surfacesByTurn.get("thread")?.length ?? 0) === 0) {
     return <div className="sac-empty">{emptyLabel}</div>;

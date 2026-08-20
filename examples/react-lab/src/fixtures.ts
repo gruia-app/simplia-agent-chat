@@ -148,7 +148,7 @@ export const CHAT_LAB_FIXTURES: Record<LabFixtureKey, LabFixture> = {
   contenido: {
     key: "contenido",
     label: "CONTENIDO",
-    description: "Publications, image review and video storyboard",
+    description: "Publication draft opens in the artifact stage",
     threadId: contenidoThread,
     state: baseFixture(
       "contenido",

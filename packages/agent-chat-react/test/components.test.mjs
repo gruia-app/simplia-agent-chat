@@ -475,3 +475,483 @@ test("timeline exposes log semantics and an empty state", () => {
   assert.match(populatedHtml, /aria-live="off"/);
   assert.match(populatedHtml, /Evidence is ready/);
 });
+
+const panelAction = {
+  id: "apply-proposal",
+  action: "proposal.apply",
+  label: "Apply proposal",
+  intent: "primary",
+};
+
+function placementState(surfaces) {
+  return {
+    ...emptyState,
+    threads: {
+      [threadId]: { id: threadId, appKey: "test", status: "active" },
+    },
+    turns: {
+      "turn-1": {
+        id: "turn-1",
+        threadId,
+        status: "completed",
+        itemIds: ["message-1"],
+      },
+    },
+    items: {
+      "message-1": {
+        id: "message-1",
+        threadId,
+        turnId: "turn-1",
+        kind: "message",
+        status: "completed",
+        role: "assistant",
+        text: "Evidence is ready.",
+      },
+    },
+    surfaces: Object.fromEntries(surfaces.map((surface) => [surface.id, surface])),
+  };
+}
+
+function createActionRegistry(kind = "test.artifact") {
+  const registry = new ReactSurfaceRegistry();
+  registry.register({
+    kind,
+    versions: [1],
+    validate(value) {
+      return value;
+    },
+    summarize() {
+      return "Artifact";
+    },
+    getA11yLabel() {
+      return "Trusted artifact";
+    },
+    component({ block, onAction }) {
+      return createElement(
+        "div",
+        { "data-surface-id": block.id },
+        (block.actions ?? []).map((action) =>
+          createElement(
+            "button",
+            {
+              key: action.id,
+              type: "button",
+              onClick: () => onAction?.(action),
+            },
+            action.label,
+          ),
+        ),
+      );
+    },
+  });
+  return registry;
+}
+
+test("timeline keeps inline surfaces and omits panel and fullscreen surfaces", () => {
+  const state = placementState([
+    {
+      id: "surface-thread-inline",
+      threadId,
+      kind: "test.artifact",
+      schemaVersion: 1,
+      revision: 1,
+      status: "ready",
+      payload: { source: "thread-inline" },
+      presentation: { title: "Thread inline" },
+    },
+    {
+      id: "surface-turn-inline",
+      threadId,
+      turnId: "turn-1",
+      kind: "test.artifact",
+      schemaVersion: 1,
+      revision: 1,
+      status: "ready",
+      payload: { source: "turn-inline" },
+      presentation: { title: "Turn inline", preferredSurface: "inline" },
+    },
+    {
+      id: "surface-panel",
+      threadId,
+      turnId: "turn-1",
+      kind: "test.artifact",
+      schemaVersion: 1,
+      revision: 1,
+      status: "ready",
+      payload: { source: "panel-secret" },
+      presentation: { title: "Panel artifact", preferredSurface: "panel" },
+    },
+    {
+      id: "surface-fullscreen",
+      threadId,
+      kind: "test.artifact",
+      schemaVersion: 1,
+      revision: 1,
+      status: "ready",
+      payload: { source: "fullscreen-secret" },
+      presentation: { title: "Fullscreen artifact", preferredSurface: "fullscreen" },
+    },
+  ]);
+  const html = renderToStaticMarkup(
+    createElement(ChatTimeline, {
+      state,
+      threadId,
+      surfaceRegistry: createActionRegistry(),
+    }),
+  );
+
+  assert.match(html, /Thread inline/);
+  assert.match(html, /Turn inline/);
+  assert.doesNotMatch(html, /Panel artifact/);
+  assert.doesNotMatch(html, /Fullscreen artifact/);
+  assert.doesNotMatch(html, /panel-secret/);
+  assert.doesNotMatch(html, /fullscreen-secret/);
+});
+
+test("shell without panel surfaces stays single-column", () => {
+  const state = placementState([
+    {
+      id: "surface-inline",
+      threadId,
+      turnId: "turn-1",
+      kind: "test.artifact",
+      schemaVersion: 1,
+      revision: 1,
+      status: "ready",
+      payload: { source: "inline-only" },
+      presentation: { title: "Inline artifact", preferredSurface: "inline" },
+    },
+  ]);
+  const html = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state,
+      threadId,
+      surfaceRegistry: createActionRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+
+  assert.match(html, /Inline artifact/);
+  assert.doesNotMatch(html, /sac-workspace-with-stage/);
+  assert.doesNotMatch(html, /sac-artifact-stage/);
+  assert.doesNotMatch(html, />Artifacts</);
+});
+
+test("panel surfaces render once in the default stage and stay out of the timeline", () => {
+  const state = placementState([
+    {
+      id: "surface-panel",
+      threadId,
+      turnId: "turn-1",
+      kind: "test.artifact",
+      schemaVersion: 1,
+      revision: 1,
+      status: "ready",
+      payload: { source: "panel-only-once" },
+      presentation: { title: "Panel artifact", preferredSurface: "panel" },
+      actions: [panelAction],
+    },
+  ]);
+  const html = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state,
+      threadId,
+      surfaceRegistry: createActionRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+
+  assert.match(html, /sac-workspace-with-stage/);
+  assert.match(html, /aria-labelledby/);
+  assert.match(html, />Artifacts</);
+  assert.match(html, /Panel artifact/);
+  assert.equal(html.split("Panel artifact").length - 1, 1);
+  assert.equal(html.split("data-surface-id=\"surface-panel\"").length - 1, 1);
+  assert.match(html, /role="log"/);
+  assert.doesNotMatch(html.split("role=\"log\"")[1].split("sac-artifact-stage")[0] ?? "", /Panel artifact/);
+});
+
+test("default artifact stage exposes an application-owned label", () => {
+  const state = placementState([
+    {
+      id: "surface-panel",
+      threadId,
+      kind: "test.artifact",
+      schemaVersion: 1,
+      revision: 1,
+      status: "ready",
+      payload: {},
+      presentation: { title: "Panel artifact", preferredSurface: "panel" },
+    },
+  ]);
+  const html = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state,
+      threadId,
+      surfaceRegistry: createActionRegistry(),
+      title: "Application copilot",
+      artifactStageLabel: "Espacio de trabajo",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+
+  assert.match(html, />Espacio de trabajo</);
+  assert.doesNotMatch(html, />Artifacts</);
+});
+
+test("custom artifact stage receives panel blocks and replaces the default stage", () => {
+  const panel = {
+    id: "surface-panel",
+    threadId,
+    turnId: "turn-1",
+    kind: "test.artifact",
+    schemaVersion: 1,
+    revision: 1,
+    status: "ready",
+    payload: { source: "custom-stage" },
+    presentation: { title: "Panel artifact", preferredSurface: "panel" },
+    actions: [panelAction],
+  };
+  const inline = {
+    id: "surface-inline",
+    threadId,
+    turnId: "turn-1",
+    kind: "test.artifact",
+    schemaVersion: 1,
+    revision: 1,
+    status: "ready",
+    payload: { source: "keep-inline" },
+    presentation: { title: "Inline artifact", preferredSurface: "inline" },
+  };
+  const state = placementState([panel, inline]);
+  let received;
+  const html = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state,
+      threadId,
+      surfaceRegistry: createActionRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+      renderArtifactStage: (props) => {
+        received = props;
+        return createElement("div", { "data-custom-stage": "panel" }, props.surfaces.map((surface) => surface.id).join(","));
+      },
+    }),
+  );
+
+  assert.ok(received);
+  assert.deepEqual(received.surfaces.map((surface) => surface.id), ["surface-panel"]);
+  assert.strictEqual(received.surfaces[0], panel);
+  assert.match(html, /data-custom-stage="panel"/);
+  assert.match(html, /Inline artifact/);
+  assert.doesNotMatch(html, />Artifacts</);
+  assert.doesNotMatch(html, /data-surface-id="surface-panel"/);
+});
+
+test("fullscreen surfaces render only through the host slot", () => {
+  const fullscreen = {
+    id: "surface-fullscreen",
+    threadId,
+    kind: "test.artifact",
+    schemaVersion: 1,
+    revision: 1,
+    status: "ready",
+    payload: { source: "fullscreen-secret" },
+    presentation: { title: "Fullscreen artifact", preferredSurface: "fullscreen" },
+  };
+  const panel = {
+    id: "surface-panel",
+    threadId,
+    kind: "test.artifact",
+    schemaVersion: 1,
+    revision: 1,
+    status: "ready",
+    payload: { source: "panel-in-stage" },
+    presentation: { title: "Panel artifact", preferredSurface: "panel" },
+  };
+  const state = placementState([fullscreen, panel]);
+  const withoutSlot = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state,
+      threadId,
+      surfaceRegistry: createActionRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+  assert.match(withoutSlot, /Panel artifact/);
+  assert.doesNotMatch(withoutSlot, /Fullscreen artifact/);
+  assert.doesNotMatch(withoutSlot, /fullscreen-secret/);
+  assert.doesNotMatch(withoutSlot, /role="dialog"/);
+
+  let received;
+  const withSlot = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state,
+      threadId,
+      surfaceRegistry: createActionRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+      renderFullscreenSurfaces: (props) => {
+        received = props;
+        return createElement("div", { "data-fullscreen-slot": "host" }, props.surfaces[0].id);
+      },
+    }),
+  );
+  assert.ok(received);
+  assert.deepEqual(received.surfaces.map((surface) => surface.id), ["surface-fullscreen"]);
+  assert.strictEqual(received.surfaces[0], fullscreen);
+  assert.match(withSlot, /data-fullscreen-slot="host"/);
+  assert.equal(withSlot.split("surface-fullscreen").length - 1, 1);
+  assert.doesNotMatch(withSlot, /role="dialog"/);
+});
+
+test("unknown panel surfaces fail closed in the default stage", () => {
+  const state = placementState([
+    {
+      id: "surface-unknown-panel",
+      threadId,
+      turnId: "turn-1",
+      kind: "external.untrusted-widget",
+      schemaVersion: 1,
+      revision: 1,
+      status: "ready",
+      payload: { secret: "panel-payload-must-not-render" },
+      presentation: { title: "Unknown panel", preferredSurface: "panel" },
+    },
+  ]);
+  const html = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state,
+      threadId,
+      surfaceRegistry: createActionRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+
+  assert.match(html, /SURFACE_UNAVAILABLE/);
+  assert.match(html, /Unknown panel/);
+  assert.match(html, /No trusted renderer/);
+  assert.doesNotMatch(html, /panel-payload-must-not-render/);
+});
+
+test("artifact stage callbacks preserve block and action identity", async () => {
+  await withDom(async ({ document }) => {
+    const panel = {
+      id: "surface-panel",
+      threadId,
+      turnId: "turn-1",
+      kind: "test.artifact",
+      schemaVersion: 1,
+      revision: 1,
+      status: "ready",
+      payload: { source: "identity" },
+      presentation: { title: "Panel artifact", preferredSurface: "panel" },
+      actions: [panelAction],
+    };
+    const state = placementState([panel]);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const received = [];
+
+    await act(async () => {
+      root.render(createElement(AgentChatShell, {
+        state,
+        threadId,
+        surfaceRegistry: createActionRegistry(),
+        title: "Application copilot",
+        composerAriaLabel: "Message application copilot",
+        onSubmit() {},
+        onResolveInteraction() {},
+        onSurfaceAction(block, action) {
+          received.push({ block, action });
+        },
+        renderArtifactStage: ({ surfaces, onSurfaceAction }) =>
+          createElement(
+            "button",
+            {
+              type: "button",
+              "data-custom-action": "true",
+              onClick: () => onSurfaceAction?.(surfaces[0], surfaces[0].actions[0]),
+            },
+            "Dispatch panel action",
+          ),
+      }));
+    });
+
+    const button = container.querySelector("[data-custom-action]");
+    assert.ok(button);
+    await act(async () => button.click());
+    assert.equal(received.length, 1);
+    assert.strictEqual(received[0].block, panel);
+    assert.strictEqual(received[0].action, panelAction);
+
+    await act(async () => root.unmount());
+  });
+});
+
+test("default stage action callbacks keep the bound action identity", async () => {
+  await withDom(async ({ document }) => {
+    const panel = {
+      id: "surface-panel",
+      threadId,
+      turnId: "turn-1",
+      kind: "test.artifact",
+      schemaVersion: 1,
+      revision: 1,
+      status: "ready",
+      payload: { source: "default-identity" },
+      presentation: { title: "Panel artifact", preferredSurface: "panel" },
+      actions: [panelAction],
+    };
+    const state = placementState([panel]);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const received = [];
+
+    await act(async () => {
+      root.render(createElement(AgentChatShell, {
+        state,
+        threadId,
+        surfaceRegistry: createActionRegistry(),
+        title: "Application copilot",
+        composerAriaLabel: "Message application copilot",
+        onSubmit() {},
+        onResolveInteraction() {},
+        onSurfaceAction(block, action) {
+          received.push({ block, action });
+        },
+      }));
+    });
+
+    const button = [...container.querySelectorAll("button")]
+      .find((candidate) => candidate.textContent === "Apply proposal");
+    assert.ok(button);
+    await act(async () => button.click());
+    assert.equal(received.length, 1);
+    assert.equal(received[0].block.id, panel.id);
+    assert.strictEqual(received[0].block.actions, panel.actions);
+    assert.strictEqual(received[0].action, panelAction);
+
+    await act(async () => root.unmount());
+  });
+});

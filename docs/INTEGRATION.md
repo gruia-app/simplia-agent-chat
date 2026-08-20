@@ -45,8 +45,40 @@ The shell is controlled. The application owns state, send/interrupt APIs and int
   onSurfaceAction={(block, action, input) =>
     api.dispatchSurfaceAction({ block, action, input })
   }
+  artifactStageLabel="Review workspace"
 />
 ```
+
+`presentation.preferredSurface` is a layout hint. Missing or unknown values default to `inline` and stay in the transcript. `panel` surfaces are omitted from the timeline and rendered once through `SurfaceHost` in a default artifact stage. `fullscreen` surfaces are host-owned: the shell does not inline them or open a library modal.
+
+Hosts may replace the default panel stage without forking the timeline. Fullscreen rendering is opt-in:
+
+```tsx
+<AgentChatShell
+  state={state}
+  threadId={threadId}
+  title="Assistant"
+  surfaceRegistry={surfaceRegistry}
+  composerAriaLabel="Message the assistant"
+  onSubmit={(message) => api.startTurn({ threadId, message })}
+  onResolveInteraction={(interaction, resolution) =>
+    api.resolveInteraction({ interactionId: interaction.id, resolution })
+  }
+  onSurfaceAction={(block, action, input) =>
+    api.dispatchSurfaceAction({ block, action, input })
+  }
+  renderArtifactStage={({ surfaces, surfaceRegistry, onSurfaceAction }) => (
+    <ReviewPane surfaces={surfaces} registry={surfaceRegistry} onAction={onSurfaceAction} />
+  )}
+  renderFullscreenSurfaces={({ surfaces, surfaceRegistry, onSurfaceAction }) => (
+    <WorkspaceCanvas surfaces={surfaces} registry={surfaceRegistry} onAction={onSurfaceAction} />
+  )}
+/>
+```
+
+`artifactStageLabel` localizes the accessible heading of the default stage. Both slots receive the original selected blocks so action callbacks keep block and action identity. Unknown panel surfaces still fail closed. Consumers without panel or fullscreen surfaces keep the existing single-column shell. When a panel stage is present, the workspace is one column in a constrained shell container and two columns when that container has room.
+
+Use `selectThreadSurfaces(state, threadId, preferredSurface?)` to read the same placement split from core. Omit the placement argument to receive every surface for the thread in deterministic state order.
 
 ## Server-side action gate
 
