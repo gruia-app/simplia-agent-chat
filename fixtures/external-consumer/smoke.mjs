@@ -13,18 +13,25 @@ import {
   beginSurfaceAction,
   createSurfaceActionState,
 } from "simplia-agent-chat/core";
+import {
+  formatConformanceReport,
+  runCoreConformance,
+} from "simplia-agent-chat/core/conformance";
 import { hasGrantedCapability } from "simplia-agent-chat/core/providers";
 import {
   ACV2_PROVIDER_CAPABILITIES,
   acv2PmAdapter,
 } from "simplia-agent-chat/adapters/acv2";
 import {
+  AGENT_CHAT_WORKSPACE_PANE_IDS,
   AgentChatShell,
+  AgentChatWorkspace,
   beginInterruptRequest,
   ChatComposer,
   ChatRunStatus,
   createInterruptRequestState,
   ReactSurfaceRegistry,
+  runWorkspaceMarkupConformance,
   SurfaceHost,
   useSurfaceAction,
 } from "simplia-agent-chat/react";
@@ -103,6 +110,38 @@ assert.match(shellHtml, /External application/);
 assert.match(shellHtml, /data-sac-theme="light"/);
 assert.match(shellHtml, /External consumer/);
 assert.match(shellHtml, /Message external consumer/);
+
+const workspaceHtml = renderToStaticMarkup(createElement(AgentChatWorkspace, {
+  ariaLabel: "External consumer workspace",
+  historyLabel: "History",
+  history: "History pane",
+  conversation: createElement(AgentChatShell, {
+    state,
+    threadId: "thread-1",
+    title: "External consumer",
+    surfaceRegistry: registry,
+    composerAriaLabel: "Message external consumer",
+    onSubmit: () => undefined,
+    onResolveInteraction: () => undefined,
+  }),
+  theme: "light",
+}));
+assert.match(workspaceHtml, /data-sac-workspace-layout="home"/);
+assert.match(workspaceHtml, /data-sac-pane="history"/);
+assert.match(workspaceHtml, /class="sac-shell"/);
+const workspaceReport = runWorkspaceMarkupConformance({
+  html: workspaceHtml,
+  expected: {
+    ariaLabel: "External consumer workspace",
+    historyLabel: "History",
+    layout: "home",
+    visiblePanes: [AGENT_CHAT_WORKSPACE_PANE_IDS.history, AGENT_CHAT_WORKSPACE_PANE_IDS.conversation],
+    nestedShell: true,
+  },
+});
+assert.equal(workspaceReport.ok, true);
+assert.match(formatConformanceReport(workspaceReport), /conformance passed/);
+assert.equal(typeof runCoreConformance, "function");
 
 const surfaceHtml = renderToStaticMarkup(createElement(SurfaceHost, {
   block: {

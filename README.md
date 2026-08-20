@@ -8,7 +8,7 @@ Provider-neutral building blocks for agentic chat interfaces. The runtime keeps 
 The project is framework-light by design:
 
 - `simplia-agent-chat/core` — protocol, deterministic reducer, SSE decoder, capability negotiation, surfaces and provider adapters.
-- `simplia-agent-chat/react` — accessible React shell, composer, timeline, run status, pending interactions and trusted surface registry.
+- `simplia-agent-chat/react` — accessible React shell, workspace layout host, composer, timeline, run status, pending interactions and trusted surface registry.
 - `simplia-agent-chat/adapters/acv2` — optional ACV2 durable-event adapter and provider capability profiles.
 
 ## Why
@@ -68,6 +68,8 @@ export function Chat() {
 ```
 
 The application owns transport, authentication, persistence, policy enforcement and domain mutations. The UI only emits decisions and surface actions; the server must validate them again. `copy` and granular labels (`emptyLabel`, `composerPlaceholder`, `artifactStageLabel`) change display text only: event IDs, decision values, status values and payloads stay protocol data. Granular props win over `copy`, which wins over English defaults. The shell has no library brand unless the application passes `headerLabel`. See [theming](docs/THEMING.md) and [integration](docs/INTEGRATION.md).
+
+`AgentChatWorkspace` is a separate layout host around the shell. Applications pass history, conversation, and optional queue/workbench slots; the library does not own history or queue models. Hosts control which panes mount through `visiblePanes` and own available height. Import `assertConformance` and `formatConformanceReport` from `simplia-agent-chat/core/conformance`; React markup helpers live on the React package.
 
 Surfaces may set `presentation.preferredSurface` to `inline` (the default), `panel`, or `fullscreen`. Inline surfaces stay in the transcript. Panel surfaces use an additive artifact stage, which a host can replace through `renderArtifactStage`. Fullscreen surfaces stay host-owned through `renderFullscreenSurfaces` and are never inlined or shown in a library modal.
 

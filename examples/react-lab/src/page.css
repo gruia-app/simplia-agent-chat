@@ -42,8 +42,39 @@ textarea {
   font: inherit;
 }
 
+.chat-lab-workspace-host {
+  height: 42rem;
+  min-height: 0;
+}
+
+.chat-lab-workspace-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chat-lab-workspace-toggle button {
+  min-height: 2rem;
+  border: 1px solid var(--lab-border-strong);
+  border-radius: 0.22rem;
+  background: var(--lab-panel);
+  color: var(--lab-muted);
+  padding: 0.3rem 0.65rem;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.chat-lab-workspace-toggle button[aria-pressed="true"] {
+  background: var(--lab-panel-active);
+  color: var(--lab-blue-text);
+}
+
 @media (max-width: 640px) {
   body {
     padding: 0;
+  }
+
+  .chat-lab-workspace-host {
+    height: 36rem;
   }
 }

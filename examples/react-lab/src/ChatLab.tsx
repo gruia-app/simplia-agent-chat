@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ChatState, JsonValue, PendingInteraction } from "simplia-agent-chat/core";
-import { AgentChatShell } from "simplia-agent-chat/react";
+import { AgentChatShell, AgentChatWorkspace } from "simplia-agent-chat/react";
 import {
   CHAT_LAB_FIXTURES,
   appendFixtureUserMessage,
@@ -19,8 +19,10 @@ export function ChatLab() {
     data: CHAT_LAB_FIXTURES.data.state,
   }));
   const [lastAction, setLastAction] = useState("No local action dispatched");
+  const [workspaceLayout, setWorkspaceLayout] = useState<"home" | "work">("home");
   const fixture = CHAT_LAB_FIXTURES[activeKey];
   const state = states[activeKey];
+  const workLayout = workspaceLayout === "work";
 
   const updateState = (updater: (current: ChatState) => ChatState) => {
     setStates((current) => ({ ...current, [activeKey]: updater(current[activeKey]) }));
@@ -57,44 +59,83 @@ export function ChatLab() {
           );
         })}
       </nav>
-      <AgentChatShell
-        key={activeKey}
-        state={state}
-        threadId={fixture.threadId}
-        surfaceRegistry={chatLabSurfaceRegistry}
-        title={state.threads[fixture.threadId]?.title ?? fixture.label}
-        subtitle={`${fixture.description} · ${state.threads[fixture.threadId]?.provider?.provider ?? "provider"}`}
-        headerLabel="Operations desk"
-        theme="light"
-        composerAriaLabel={`Message the ${fixture.label} agent`}
-        composerPlaceholder={`Send an instruction to ${fixture.label}…`}
-        onSubmit={(message) => {
-          updateState((current) => appendFixtureUserMessage(current, fixture.threadId, message));
-          setLastAction(`Queued local fixture message for ${fixture.label}`);
-        }}
-        onInterrupt={(turn) => {
-          setLastAction(`Stop requested for ${turn.id}`);
-        }}
-        composerActions={
-          <button
-            className="sac-button"
-            type="button"
-            onClick={() => setLastAction(`Composer action on ${fixture.label}`)}
-          >
-            Insert note
-          </button>
-        }
-        onResolveInteraction={resolveInteraction}
-        onSurfaceAction={(block, action) => {
-          setLastAction(`${block.kind}: ${action.action}`);
-        }}
-        toolbar={
-          <>
-            <span className="chat-lab-runtime">{fixture.label}</span>
-            <span className="chat-lab-runtime">3 SURFACE_PLUGINS</span>
-          </>
-        }
-      />
+      <div className="chat-lab-workspace-host">
+        <AgentChatWorkspace
+          ariaLabel="Shared agent chat workspace"
+          historyLabel="Session history"
+          theme="light"
+          header={(
+            <div className="chat-lab-workspace-toggle">
+              <button
+                type="button"
+                aria-pressed={workspaceLayout === "home"}
+                onClick={() => setWorkspaceLayout("home")}
+              >
+                Home
+              </button>
+              <button
+                type="button"
+                aria-pressed={workspaceLayout === "work"}
+                onClick={() => setWorkspaceLayout("work")}
+              >
+                Work
+              </button>
+            </div>
+          )}
+          history={{
+            header: "Sessions",
+            body: <p>{fixture.label}</p>,
+          }}
+          conversation={(
+            <AgentChatShell
+              key={activeKey}
+              state={state}
+              threadId={fixture.threadId}
+              surfaceRegistry={chatLabSurfaceRegistry}
+              title={state.threads[fixture.threadId]?.title ?? fixture.label}
+              subtitle={`${fixture.description} · ${state.threads[fixture.threadId]?.provider?.provider ?? "provider"}`}
+              headerLabel="Operations desk"
+              theme="light"
+              composerAriaLabel={`Message the ${fixture.label} agent`}
+              composerPlaceholder={`Send an instruction to ${fixture.label}…`}
+              onSubmit={(message) => {
+                updateState((current) => appendFixtureUserMessage(current, fixture.threadId, message));
+                setLastAction(`Queued local fixture message for ${fixture.label}`);
+              }}
+              onInterrupt={(turn) => {
+                setLastAction(`Stop requested for ${turn.id}`);
+              }}
+              composerActions={
+                <button
+                  className="sac-button"
+                  type="button"
+                  onClick={() => setLastAction(`Composer action on ${fixture.label}`)}
+                >
+                  Insert note
+                </button>
+              }
+              onResolveInteraction={resolveInteraction}
+              onSurfaceAction={(block, action) => {
+                setLastAction(`${block.kind}: ${action.action}`);
+              }}
+              toolbar={
+                <>
+                  <span className="chat-lab-runtime">{fixture.label}</span>
+                  <span className="chat-lab-runtime">3 SURFACE_PLUGINS</span>
+                </>
+              }
+            />
+          )}
+          {...(workLayout
+            ? {
+              workQueueLabel: "Work queue",
+              workQueue: { body: <p>No queued work.</p> },
+              workbenchLabel: "Workbench",
+              workbench: { body: <p>Inspect work here.</p> },
+            }
+            : {})}
+        />
+      </div>
     </div>
   );
 }

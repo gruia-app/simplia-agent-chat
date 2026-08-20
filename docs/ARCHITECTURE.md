@@ -40,6 +40,10 @@ Surface actions include the surface revision and an idempotency key. A server mu
 
 The React package is one client implementation. Other clients can consume the same state and protocol without React. Web, desktop and native applications may share the kernel while using different component trees.
 
+`AgentChatWorkspace` is a layout host, not a second shell. It arranges application-owned history, conversation, optional work queue and optional workbench slots in a fixed DOM order. `AgentChatShell` stays the conversation surface and does not gain workspace props. The host owns available height, pane visibility and any narrow-container switcher.
+
+Runner-agnostic conformance helpers live in core (`runCoreConformance`, `assertConformance`, `formatConformanceReport`). They check plugin registration, fail-closed decode, canary isolation, action idempotency and optional deterministic replay without a test runner, filesystem, DOM or network. Reports use fixed safe details and never echo payloads, canaries, summaries, plugin exceptions or event objects.
+
 ## Identity and isolation
 
 Thread IDs should be scoped by environment and application in persistent stores. `appKey` and `organizationId` are context, not authorization. Servers derive tenant identity from authenticated membership and revalidate every mutation.

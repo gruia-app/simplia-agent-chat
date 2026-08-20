@@ -46,7 +46,7 @@ Pass `theme="light"` to `AgentChatShell` or a standalone component. The same att
 
 ## `.sac-theme`
 
-Standalone `ChatComposer`, `ChatTimeline`, `ChatRunStatus`, `PendingInteractions` and `SurfaceHost` add `.sac-theme` so they can be used outside the shell. Optional `theme="dark" | "light"` sets `data-sac-theme`. Applications may also wrap a group of standalone components:
+Standalone `ChatComposer`, `ChatTimeline`, `ChatRunStatus`, `PendingInteractions` and `SurfaceHost` add `.sac-theme` so they can be used outside the shell. Optional `theme="dark" | "light"` sets `data-sac-theme`. `AgentChatWorkspace` is also a theme root (`.sac-workspace`) with container name `sac-workspace`. It fills the host's height (`height: 100%`, `min-height: 0`) and does not set a viewport height. Nested `AgentChatShell` fills the conversation pane and drops its outer border; the shell keeps `container-name: sac-shell` for its own artifact-stage queries. Applications may also wrap a group of standalone components:
 
 ```html
 <div class="sac-theme" data-sac-theme="light">

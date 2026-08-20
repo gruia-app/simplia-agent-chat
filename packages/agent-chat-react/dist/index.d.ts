@@ -1,5 +1,7 @@
 export { defaultAgentChatCopy, resolveAgentChatCopy, type AgentChatCopy, type AgentChatCopyOverrides, type AgentChatTheme, } from "./copy.js";
 export * from "./AgentChatShell.js";
+export * from "./AgentChatWorkspace.js";
+export { runSurfaceHostMarkupConformance, runWorkspaceMarkupConformance, type SurfaceHostMarkupConformanceExpectation, type SurfaceHostMarkupConformanceInput, type WorkspaceMarkupConformanceExpectation, type WorkspaceMarkupConformanceInput, } from "./conformance.js";
 export * from "./ChatComposer.js";
 export * from "./ChatRunStatus.js";
 export * from "./ChatTimeline.js";

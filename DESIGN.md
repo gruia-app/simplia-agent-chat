@@ -13,7 +13,8 @@ The shell supplies hierarchy, rhythm, interaction states and safe fallbacks. The
 3. Keep body copy in a readable system sans. Reserve mono for compact metadata, status codes and technical evidence.
 4. Let the application accent identify primary actions and focus. Success, warning and danger remain semantic and cannot rely on color alone.
 5. Keep transcript and artifact stage independently scrollable. Collapse by the chat container width, not only the viewport.
-6. Default copy is concise, provider-neutral English. Every library-owned string and dynamic accessible label must be replaceable without changing command values or event payloads.
+6. The workspace host fills the height the application gives it. Do not impose a viewport height or an arbitrary minimum on the outer workspace. Multi-column pane scrolling is a container query; below the first column breakpoint every host-visible pane stays reachable in DOM order.
+7. Default copy is concise, provider-neutral English. Every library-owned string and dynamic accessible label must be replaceable without changing command values or event payloads.
 
 ## Themes
 
@@ -57,6 +58,6 @@ Legacy `--sac-*` color variables remain aliases during migration. New component 
 - hard-coded uppercase branding;
 - raw protocol status used as the only user-facing label when a copy formatter is available;
 - changing decision/event values while localizing labels;
-- viewport-only responsive rules;
+- viewport-only responsive rules or CSS that hides workspace panes;
 - decorative animation, gradients, glass, glow or deep shadow stacks;
 - broad theme objects that inject arbitrary CSS or executable renderers.
