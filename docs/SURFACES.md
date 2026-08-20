@@ -45,6 +45,22 @@ registry.register({
 
 Renderers receive a validated block and an optional `onAction`. They must not execute mutations directly.
 
+## Placement
+
+`presentation.preferredSurface` tells a client where a trusted surface should appear. It is not a permission grant and does not change reducer behavior.
+
+- Missing `preferredSurface` defaults to `inline`.
+- Unknown placement values also default to `inline`.
+- `inline` stays in the transcript, including thread-level surfaces and surfaces attached to a turn.
+- `panel` is omitted from the transcript and rendered once in the React shell's default artifact stage through `SurfaceHost`.
+- `fullscreen` is host-owned. The library never renders it inline and never places it in a modal.
+
+`selectThreadSurfaces(state, threadId, preferredSurface?)` is the pure selector for this split. It returns the original block objects in deterministic state order and does not mutate them. Omit the placement argument to receive every surface that belongs to the thread.
+
+The default artifact stage is additive. Hosts localize its heading with `artifactStageLabel` or replace it with `renderArtifactStage` without forking `ChatTimeline`. Fullscreen surfaces render only when the host supplies `renderFullscreenSurfaces`. Existing consumers that never emit panel or fullscreen surfaces keep the single-column shell.
+
+Unknown or invalid panel surfaces still fail closed. Custom stage and fullscreen slots receive the original blocks, including payload; applications that replace the default stage remain responsible for payload safety.
+
 ## Naming
 
 Use reverse-domain-like application namespaces:

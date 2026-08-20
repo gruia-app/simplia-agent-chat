@@ -63,6 +63,8 @@ export function Chat() {
 
 The application owns transport, authentication, persistence, policy enforcement and domain mutations. The UI only emits decisions and surface actions; the server must validate them again.
 
+Surfaces may set `presentation.preferredSurface` to `inline` (the default), `panel`, or `fullscreen`. Inline surfaces stay in the transcript. Panel surfaces use an additive artifact stage, which a host can replace through `renderArtifactStage`. Fullscreen surfaces stay host-owned through `renderFullscreenSurfaces` and are never inlined or shown in a library modal.
+
 ## Design principles
 
 - Provider capability and permission grants are different facts.

@@ -40,3 +40,11 @@ test("motion and coarse-pointer fallbacks remain present", () => {
   assert.match(css, /@media \(pointer: coarse\)/);
   assert.match(css, /min-height:\s*2\.75rem/);
 });
+
+test("artifact stage splits on shell container width rather than the viewport", () => {
+  assert.match(css, /container-type:\s*inline-size/);
+  assert.match(css, /container-name:\s*sac-shell/);
+  assert.match(css, /@container sac-shell \(min-width: 48rem\)/);
+  assert.match(css, /\.sac-workspace-with-stage/);
+  assert.doesNotMatch(css, /@media[^{]+\{[^}]*sac-workspace-with-stage/);
+});

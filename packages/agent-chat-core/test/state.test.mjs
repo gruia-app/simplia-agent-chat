@@ -6,6 +6,7 @@ import {
   reduceChatEvent,
   replayChatEvents,
   selectPendingInteraction,
+  selectThreadSurfaces,
   selectThreadTurns,
   selectTurnItems,
   validateChatEvent,
@@ -529,4 +530,63 @@ test("snapshot foreign members and envelope payload mismatches reject", () => {
     assert.strictEqual(result.state, initial);
     assert.deepEqual(result.state.seenEventIds, []);
   }
+});
+
+test("selectThreadSurfaces treats missing placement as inline and preserves state order", () => {
+  const missing = baseSurface({ id: "surface-missing" });
+  delete missing.presentation;
+  const explicitInline = baseSurface({
+    id: "surface-inline",
+    presentation: { title: "Inline table", preferredSurface: "inline" },
+  });
+  const panel = baseSurface({
+    id: "surface-panel",
+    presentation: { title: "Panel table", preferredSurface: "panel" },
+  });
+  const fullscreen = baseSurface({
+    id: "surface-fullscreen",
+    presentation: { title: "Fullscreen table", preferredSurface: "fullscreen" },
+  });
+  const foreign = baseSurface({
+    id: "surface-foreign",
+    threadId: "thread-2",
+    presentation: { preferredSurface: "inline" },
+  });
+  const unknownPlacement = baseSurface({
+    id: "surface-unknown",
+    presentation: { preferredSurface: "drawer" },
+  });
+  const state = replayChatEvents([
+    chatEvent("thread.upsert", baseThread()),
+    chatEvent("surface.upsert", missing, { id: "upsert-missing" }),
+    chatEvent("surface.upsert", explicitInline, { id: "upsert-inline" }),
+    chatEvent("surface.upsert", panel, { id: "upsert-panel" }),
+    chatEvent("surface.upsert", fullscreen, { id: "upsert-fullscreen" }),
+    chatEvent("surface.upsert", foreign, { id: "upsert-foreign", threadId: "thread-2" }),
+    chatEvent("surface.upsert", unknownPlacement, { id: "upsert-unknown" }),
+  ]);
+
+  Object.values(state.surfaces).forEach((surface) => Object.freeze(surface));
+  const before = structuredClone(state.surfaces);
+
+  assert.deepEqual(
+    selectThreadSurfaces(state, "thread-1").map((surface) => surface.id),
+    ["surface-missing", "surface-inline", "surface-panel", "surface-fullscreen", "surface-unknown"],
+  );
+  assert.deepEqual(
+    selectThreadSurfaces(state, "thread-1", "inline").map((surface) => surface.id),
+    ["surface-missing", "surface-inline", "surface-unknown"],
+  );
+  assert.deepEqual(
+    selectThreadSurfaces(state, "thread-1", "panel").map((surface) => surface.id),
+    ["surface-panel"],
+  );
+  assert.deepEqual(
+    selectThreadSurfaces(state, "thread-1", "fullscreen").map((surface) => surface.id),
+    ["surface-fullscreen"],
+  );
+
+  const selectedMissing = selectThreadSurfaces(state, "thread-1", "inline")[0];
+  assert.strictEqual(selectedMissing, state.surfaces["surface-missing"]);
+  assert.deepEqual(state.surfaces, before);
 });

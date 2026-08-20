@@ -1,7 +1,7 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useMemo } from "react";
-import { selectThreadTurns, selectTurnItems, } from "simplia-agent-chat/core";
+import { selectThreadSurfaces, selectThreadTurns, selectTurnItems, } from "simplia-agent-chat/core";
 import { SurfaceHost } from "./surface-registry.js";
 function stringifyDetail(value) {
     if (value === undefined || value === null)
@@ -21,14 +21,12 @@ export function ChatTimeline({ state, threadId, surfaceRegistry, onSurfaceAction
     const turns = useMemo(() => selectThreadTurns(state, threadId), [state, threadId]);
     const surfacesByTurn = useMemo(() => {
         const next = new Map();
-        for (const surface of Object.values(state.surfaces)) {
-            if (surface.threadId !== threadId)
-                continue;
+        for (const surface of selectThreadSurfaces(state, threadId, "inline")) {
             const key = surface.turnId ?? "thread";
             next.set(key, [...(next.get(key) ?? []), surface]);
         }
         return next;
-    }, [state.surfaces, threadId]);
+    }, [state, threadId]);
     if (turns.length === 0 && (surfacesByTurn.get("thread")?.length ?? 0) === 0) {
         return _jsx("div", { className: "sac-empty", children: emptyLabel });
     }
