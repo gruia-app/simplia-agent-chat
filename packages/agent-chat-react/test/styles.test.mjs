@@ -89,7 +89,7 @@ test("semantic tokens and theme wrappers are documented in CSS", () => {
   }
   assert.match(css, /\.sac-theme\b/);
   assert.match(css, /\[data-sac-theme="light"\]/);
-  assert.match(css, /\.sac-theme:not\(\.sac-shell \.sac-theme\):not\(\.sac-theme \.sac-theme\)/);
+  assert.match(css, /:where\(\.sac-theme:not\(\.sac-shell \.sac-theme\):not\(\.sac-workspace \.sac-theme\):not\(\.sac-theme \.sac-theme\)\)/);
   assert.match(css, /\[data-sac-theme="dark"\]/);
   assert.match(css, /--sac-color-canvas:\s*var\(--sac-bg\)/);
   assert.match(css, /background:\s*var\(--sac-color-canvas\)/);
@@ -160,9 +160,16 @@ test("component rules consume semantic tokens instead of legacy color inputs", (
 });
 
 test("nested standalone roots inherit a shell or wrapper theme unless explicitly themed", () => {
-  const defaults = css.slice(0, css.indexOf(":where(.sac-shell, .sac-theme)[data-sac-theme=\"light\"]"));
-  assert.match(defaults, /\.sac-theme:not\(\.sac-shell \.sac-theme\):not\(\.sac-theme \.sac-theme\)/);
+  const defaults = css.slice(0, css.indexOf(":where(.sac-shell, .sac-workspace, .sac-theme)[data-sac-theme=\"light\"]"));
+  assert.match(defaults, /:where\(\.sac-theme:not\(\.sac-shell \.sac-theme\):not\(\.sac-workspace \.sac-theme\):not\(\.sac-theme \.sac-theme\)\)/);
   assert.match(defaults, /\[data-sac-theme="dark"\]/);
+});
+
+test("workspace descendants inherit its theme unless they explicitly opt out", () => {
+  assert.match(css, /:where\(\.sac-shell:not\(\.sac-workspace \.sac-shell\)\)/);
+  assert.match(css, /:where\(\.sac-theme:not\(\.sac-shell \.sac-theme\):not\(\.sac-workspace \.sac-theme\)/);
+  assert.match(css, /:where\(\.sac-shell, \.sac-workspace, \.sac-theme\)\[data-sac-theme="dark"\]/);
+  assert.match(css, /:where\(\.sac-shell, \.sac-workspace, \.sac-theme\)\[data-sac-theme="light"\]/);
 });
 
 test("motion, coarse-pointer and artifact-stage contracts remain present", () => {
@@ -197,4 +204,34 @@ test("run status, composer actions and queued/pending/interrupted/cancelled stat
   assert.match(interrupted, /var\(--sac-color-text-muted\)/);
   assert.doesNotMatch(interrupted, /danger/);
   assert.doesNotMatch(css, /Codex|OpenAI|OpenRouter|LangChain/i);
+});
+
+test("workspace container CSS fills host height and never hides panes", () => {
+  const workspaceIndex = css.indexOf(".sac-workspace {");
+  assert.ok(workspaceIndex >= 0);
+  const workspaceBlock = blockAround("--sac-workspace-history-width: 13.25rem");
+  assert.match(workspaceBlock, /height:\s*100%/);
+  assert.match(workspaceBlock, /min-height:\s*0/);
+  assert.doesNotMatch(workspaceBlock, /78vh|100dvh|100vh|min-height:\s*[1-9]/);
+  assert.match(css, /container-name:\s*sac-workspace/);
+  assert.match(css, /--sac-workspace-history-width:\s*13\.25rem/);
+  assert.match(css, /--sac-workspace-conversation-width:\s*31\.25rem/);
+  assert.match(css, /--sac-workspace-queue-width:\s*17\.5rem/);
+  assert.match(css, /\.sac-workspace-conversation\s*>\s*\.sac-shell\s*\{[^}]*height:\s*100%/);
+  assert.match(css, /\.sac-workspace-conversation\s*>\s*\.sac-shell\s*\{[^}]*border:\s*0/);
+  assert.match(css, /@container sac-workspace \(min-width: 44\.5rem\)/);
+  assert.match(css, /@container sac-workspace \(min-width: 80rem\)/);
+  assert.doesNotMatch(css, /@container[^\n]*var\(/);
+  assert.match(css, /data-sac-workspace-layout="home"/);
+  assert.match(css, /data-sac-workspace-layout="work"/);
+  assert.match(css, /data-sac-workspace-layout="mixed"/);
+
+  const stacked = css.slice(workspaceIndex, css.indexOf("@container sac-workspace"));
+  assert.match(stacked, /\.sac-workspace-body\s*\{[^}]*overflow:\s*auto/s);
+  assert.doesNotMatch(stacked, /\.sac-workspace-body\s*\{[^}]*overflow:\s*hidden/s);
+  assert.doesNotMatch(css, /\[data-sac-pane[^\]]*\][^{]*\{[^}]*display:\s*none/);
+  assert.doesNotMatch(css, /\.sac-workspace-(history|conversation|queue|workbench)[^{]*\{[^}]*display:\s*none/);
+  assert.doesNotMatch(css, /@media[^{]+\{[^}]*sac-workspace-(history|conversation|queue|workbench)/);
+  assert.doesNotMatch(css, /@media[^{]+\{[^}]*data-sac-pane/);
+  assert.doesNotMatch(css, /@media[^{]+\{[^}]*data-sac-workspace-layout/);
 });

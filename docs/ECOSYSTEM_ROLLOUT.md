@@ -21,7 +21,7 @@ The shared kernel is deliberately smaller than the applications that consume it.
 
 1. Map native events to protocol fixtures.
 2. Register only trusted surface schemas and renderers.
-3. Run replay and unknown-payload conformance tests.
+3. Run replay and unknown-payload conformance tests with `runCoreConformance` and, for React hosts, `runWorkspaceMarkupConformance` / `runSurfaceHostMarkupConformance`.
 4. Launch read-only behind an application feature flag.
 5. Add pending interactions with server-side policy enforcement.
 6. Add domain actions one by one with idempotency and audit evidence.

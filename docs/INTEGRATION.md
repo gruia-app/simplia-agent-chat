@@ -155,6 +155,59 @@ Hosts may replace the default panel stage without forking the timeline. Fullscre
 
 Use `selectThreadSurfaces(state, threadId, preferredSurface?)` to read the same placement split from core. Omit the placement argument to receive every surface for the thread in deterministic state order.
 
+## Workspace host
+
+Compose `AgentChatWorkspace` around the shell when the application needs history, conversation and optional work slots. The workspace does not accept history arrays, queue rows, transport or domain models. Labels are required application strings. Omitted slots are absent; `visiblePanes` unmounts a pane instead of hiding it with CSS.
+
+```tsx
+import { AgentChatShell, AgentChatWorkspace } from "simplia-agent-chat/react";
+
+<AgentChatWorkspace
+  ariaLabel="Operator workspace"
+  historyLabel="Session history"
+  history={{ header: "Sessions", body: historyList }}
+  conversation={
+    <AgentChatShell
+      state={state}
+      threadId={threadId}
+      title="Assistant"
+      surfaceRegistry={surfaceRegistry}
+      composerAriaLabel="Message the assistant"
+      onSubmit={(message) => api.startTurn({ threadId, message })}
+      onResolveInteraction={(interaction, resolution) =>
+        api.resolveInteraction({ interactionId: interaction.id, resolution })
+      }
+    />
+  }
+  workQueueLabel="Work queue"
+  workQueue={queuePane}
+  workbenchLabel="Workbench"
+  workbench={workbenchPane}
+  visiblePanes={{ history: true, conversation: true, workQueue: showWork, workbench: showWork }}
+  theme="light"
+/>
+```
+
+Give the workspace a definite height from the host (`height: 100%` fills that host). On narrow containers, applications should usually mount one pane and own the switcher. If several panes stay mounted, they remain reachable in DOM order through the workspace body scroller.
+
+## Conformance helpers
+
+Import assertions from core, not from React, unless you intentionally re-export them:
+
+```ts
+import {
+  assertConformance,
+  formatConformanceReport,
+  runCoreConformance,
+} from "simplia-agent-chat/core/conformance";
+import {
+  runSurfaceHostMarkupConformance,
+  runWorkspaceMarkupConformance,
+} from "simplia-agent-chat/react";
+```
+
+`runCoreConformance` is runner-agnostic. Pass cloned surface fixtures and optional replay events. A failing report never interpolates payloads, canaries, summaries, plugin exception text or event objects. `runWorkspaceMarkupConformance` and `runSurfaceHostMarkupConformance` compare static HTML strings and also keep canaries out of the report.
+
 ## Server-side action gate
 
 For every approval or surface action, verify:

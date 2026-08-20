@@ -5,6 +5,7 @@ export * from "./state.js";
 export * from "./runtime.js";
 export * from "./persistence.js";
 export * from "./surfaces.js";
+export * from "./conformance.js";
 export * from "./domain-actions.js";
 export * from "./adapters/codex.js";
 export * from "./adapters/langchain.js";

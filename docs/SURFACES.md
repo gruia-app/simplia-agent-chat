@@ -88,6 +88,23 @@ The built-in fallback may show only the surface kind, schema version and trusted
 
 A custom `fallback` receives the original block, including payload. The host does not sanitize that argument. Applications that supply a custom fallback are responsible for payload safety and must not render raw unknown payloads or exception messages.
 
+## Conformance kit
+
+`runCoreConformance` is the packaged, runner-agnostic surface and replay kit. It registers each fixture plugin on a local registry, checks kind/version registration, valid JSON decode, invalid payload rejection, unknown-kind fail-closed behavior, non-empty summary/accessibility labels, payload-canary isolation, and action idempotency plus non-JSON input rejection. Optional replay fixtures cover malformed events, unknown types, duplicates and deterministic replay.
+
+```ts
+import {
+  assertConformance,
+  formatConformanceReport,
+  runCoreConformance,
+} from "simplia-agent-chat/core/conformance";
+
+const report = runCoreConformance({ surfaces: [fixture], replay });
+assertConformance(report);
+```
+
+Every check `detail` is a fixed safe description. Reports, `formatConformanceReport`, and `ConformanceError` must not echo the payload, payload canary, summary/a11y output, plugin exception text or event objects. React markup helpers `runWorkspaceMarkupConformance` and `runSurfaceHostMarkupConformance` reuse this report model; import `assertConformance` from `simplia-agent-chat/core/conformance`. Live provider conformance remains a separate roadmap item.
+
 ## Actions
 
 Create commands with `createSurfaceActionCommand`. The command binds action, surface revision, thread and idempotency key. The server still owns authorization, validation and execution.
