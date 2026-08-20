@@ -99,6 +99,7 @@ The shell is controlled. The application owns state, send/interrupt APIs and int
       decision === "approve" ? "Confirmar aprobar" : `Confirmar ${decision}`,
   }}
   onSubmit={(message) => api.startTurn({ threadId, message })}
+  onInterrupt={(turn) => api.interrupt({ threadId, turnId: turn.id })}
   onResolveInteraction={(interaction, resolution) =>
     api.resolveInteraction({ interactionId: interaction.id, resolution })
   }
@@ -109,7 +110,17 @@ The shell is controlled. The application owns state, send/interrupt APIs and int
 />
 ```
 
-Copy changes display labels, hints and ARIA text only. Event IDs, `onResolve` decision values, status values and payloads stay protocol data: clicking **Aprobar** still submits `{ decision: "approve" }`.
+Copy changes display labels, hints and ARIA text only. Event IDs, `onResolve` decision values, status values and payloads stay protocol data: clicking **Aprobar** still submits `{ decision: "approve" }`. Formatters such as `runPhaseLabel` receive only documented primitive values.
+
+`selectThreadRunState(state, threadId)` and `selectActiveTurn(state, threadId)` are read-only projections. They return existing turn and interaction references and never mutate `ChatState`. Waiting wins, then queued, then running with a streaming item (`streaming`), then running (`busy`), then the latest terminal outcome, then an empty thread in `error` (`failed`), otherwise `idle`.
+
+The shell's existing `busy` prop is an optimistic transport overlay: while a new submission is in flight but no new turn event exists yet, an `idle` or previously `completed` projection is displayed as `busy`. It never invents a turn ID or enables Stop.
+
+Pass `onInterrupt(turn)` when the application can request a stop. The shell only reports that a stop was requested. It does not mark the turn cancelled or interrupted. Double requests for the same active turn are ignored while the request is submitting or submitted. A rejected request unlocks retry and shows `interruptError` without exception text. Stop is omitted unless both an active turn and `onInterrupt` exist, and it stays separate from Send. `renderRunStatus` replaces the default run-status chrome.
+
+The default composer accepts optional `actions` and `onDraftChange`. Action-slot clicks do not submit. `composerActions` is passed only to the default composer. A local submitting fence sends one snapshot even if the host has not set `busy` yet. If `onSubmit` throws or rejects, the snapshot is restored only when the operator has not typed a replacement draft. The textarea stays editable while busy so the next instruction can be drafted; `disabled` still blocks editing.
+
+`renderMessage` stays an application-owned slot. The library does not add a Markdown or HTML parser. Renderer failures fall back to React-escaped `item.text`, or `messageRendererFallback` when that text is empty, without exception text or raw metadata/input/output. Tool and command work details never invoke `renderMessage`.
 
 Granular props win over `copy`, which wins over the English defaults: `emptyLabel` / `composerPlaceholder` / `artifactStageLabel` / `ChatComposer` `placeholder` `submitLabel` `hint`. The shell has no library brand; pass `headerLabel` when the application wants a small owner label. `theme` is `"dark" | "light"`; omitted keeps the dark compatibility palette. See [Theming](THEMING.md).
 

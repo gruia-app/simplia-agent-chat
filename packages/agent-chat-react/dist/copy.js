@@ -13,6 +13,18 @@ const defaultSurfaceFallbackAriaLabel = (kind, schemaVersion, title) => {
     return trustedTitle ? `${trustedTitle} (${kind} v${schemaVersion})` : `${kind} v${schemaVersion}`;
 };
 const identityKind = (kind) => kind;
+const RUN_PHASE_LABELS = {
+    idle: "Idle",
+    queued: "Queued",
+    busy: "Busy",
+    streaming: "Streaming",
+    waiting: "Waiting",
+    completed: "Completed",
+    failed: "Failed",
+    interrupted: "Interrupted",
+    cancelled: "Cancelled",
+};
+const defaultRunPhaseLabel = (phase) => RUN_PHASE_LABELS[phase];
 export const defaultAgentChatCopy = Object.freeze({
     jumpToLive: "Return to live",
     artifactStageLabel: "Artifacts",
@@ -47,6 +59,13 @@ export const defaultAgentChatCopy = Object.freeze({
     surfaceFallbackAriaLabel: defaultSurfaceFallbackAriaLabel,
     surfaceStatusLabel: identityStatus,
     surfaceKindLabel: identityKind,
+    runPhaseLabel: defaultRunPhaseLabel,
+    interruptLabel: "Stop",
+    interruptBusyLabel: "Stopping…",
+    interruptRequestedLabel: "Stop requested",
+    interruptError: "The stop request could not be sent. Try again.",
+    interruptDescription: "Requests that the provider stop the current turn.",
+    messageRendererFallback: "This message could not be displayed.",
 });
 const resolvedCopies = new WeakSet();
 resolvedCopies.add(defaultAgentChatCopy);

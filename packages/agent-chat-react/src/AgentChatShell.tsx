@@ -2,15 +2,20 @@
 
 import { useId, useMemo, type ReactNode } from "react";
 import {
+  selectActiveTurn,
+  selectThreadRunState,
   selectThreadSurfaces,
   type ChatState,
   type ChatItem,
+  type ChatTurn,
   type JsonValue,
   type PendingInteraction,
   type SurfaceActionRef,
   type SurfaceBlock,
+  type ThreadRunState,
 } from "simplia-agent-chat/core";
 import { ChatComposer, type ChatComposerProps } from "./ChatComposer.js";
+import { ChatRunStatus } from "./ChatRunStatus.js";
 import { ChatTimeline } from "./ChatTimeline.js";
 import {
   resolveAgentChatCopy,
@@ -27,6 +32,13 @@ export interface AgentChatSurfaceSlotProps {
   surfaces: SurfaceBlock[];
   surfaceRegistry: ReactSurfaceRegistry;
   onSurfaceAction?: ((block: SurfaceBlock, action: SurfaceActionRef, input?: JsonValue) => void) | undefined;
+}
+
+export interface AgentChatRunStatusSlotProps {
+  runState: ThreadRunState;
+  activeTurn: ChatTurn | undefined;
+  copy: AgentChatCopy;
+  onInterrupt?: ((turn: ChatTurn) => void | Promise<void>) | undefined;
 }
 
 export interface AgentChatShellProps {
@@ -52,6 +64,9 @@ export interface AgentChatShellProps {
   copy?: AgentChatCopyOverrides | undefined;
   theme?: AgentChatTheme | undefined;
   headerLabel?: ReactNode | undefined;
+  onInterrupt?: ((turn: ChatTurn) => void | Promise<void>) | undefined;
+  composerActions?: ReactNode | undefined;
+  renderRunStatus?: ((props: AgentChatRunStatusSlotProps) => ReactNode) | undefined;
 }
 
 function surfaceSlotProps(
@@ -120,8 +135,18 @@ export function AgentChatShell({
   copy,
   theme,
   headerLabel,
+  onInterrupt,
+  composerActions,
+  renderRunStatus,
 }: AgentChatShellProps) {
   const resolvedCopy = useMemo(() => resolveAgentChatCopy(copy), [copy]);
+  const protocolRunState = useMemo(() => selectThreadRunState(state, threadId), [state, threadId]);
+  const runState = useMemo<ThreadRunState>(() => (
+    busy && (protocolRunState.phase === "idle" || protocolRunState.phase === "completed")
+      ? { phase: "busy" }
+      : protocolRunState
+  ), [busy, protocolRunState]);
+  const activeTurn = useMemo(() => selectActiveTurn(state, threadId), [state, threadId]);
   const stageLabel = artifactStageLabel ?? resolvedCopy.artifactStageLabel;
   const interactions = useMemo(
     () => Object.values(state.interactions).filter((interaction) => interaction.threadId === threadId),
@@ -154,6 +179,24 @@ export function AgentChatShell({
   const follow = useFollowScroll(contentVersion);
   const slotProps = surfaceSlotProps(panelSurfaces, surfaceRegistry, onSurfaceAction);
   const hasArtifactStage = panelSurfaces.length > 0;
+  const runStatusSlotProps: AgentChatRunStatusSlotProps = {
+    runState,
+    activeTurn,
+    copy: resolvedCopy,
+    ...(onInterrupt ? { onInterrupt } : {}),
+  };
+  const runStatus = renderRunStatus
+    ? renderRunStatus(runStatusSlotProps)
+    : runState.phase !== "idle"
+      ? (
+        <ChatRunStatus
+          runState={runState}
+          copy={resolvedCopy}
+          {...(onInterrupt ? { onInterrupt } : {})}
+          {...(theme ? { theme } : {})}
+        />
+      )
+      : null;
 
   const chatStage = (
     <div className="sac-chat-stage">
@@ -209,6 +252,7 @@ export function AgentChatShell({
         ? renderFullscreenSurfaces(surfaceSlotProps(fullscreenSurfaces, surfaceRegistry, onSurfaceAction))
         : null}
       <div className="sac-input-rail">
+        {runStatus}
         <PendingInteractions
           interactions={interactions}
           onResolve={onResolveInteraction}
@@ -221,6 +265,7 @@ export function AgentChatShell({
             copy={resolvedCopy}
             busy={busy}
             {...(composerPlaceholder !== undefined ? { placeholder: composerPlaceholder } : {})}
+            {...(composerActions !== undefined ? { actions: composerActions } : {})}
           />
         )}
       </div>

@@ -6,6 +6,7 @@ It provides:
 
 - typed thread, turn, item, interaction and surface events;
 - runtime envelope validation via `validateChatEvent`;
+- derived operational run state (`selectThreadRunState`, `selectActiveTurn`) without mutating protocol entities;
 - deterministic replay with sequence-gap and duplicate detection;
 - snapshot gap recovery when the snapshot carries stream metadata;
 - optional `ChatRuntime` over that same reducer, plus a caller-owned snapshot/journal persistence port;

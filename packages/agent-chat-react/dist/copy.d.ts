@@ -1,3 +1,4 @@
+import type { ThreadRunPhase } from "simplia-agent-chat/core";
 export type AgentChatTheme = "dark" | "light";
 export interface AgentChatCopy {
     readonly jumpToLive: string;
@@ -33,6 +34,13 @@ export interface AgentChatCopy {
     readonly surfaceFallbackAriaLabel: (kind: string, schemaVersion: number, title: string | undefined) => string;
     readonly surfaceStatusLabel: (status: string) => string;
     readonly surfaceKindLabel: (kind: string) => string;
+    readonly runPhaseLabel: (phase: ThreadRunPhase) => string;
+    readonly interruptLabel: string;
+    readonly interruptBusyLabel: string;
+    readonly interruptRequestedLabel: string;
+    readonly interruptError: string;
+    readonly interruptDescription: string;
+    readonly messageRendererFallback: string;
 }
 export type AgentChatCopyOverrides = Partial<AgentChatCopy>;
 export declare const defaultAgentChatCopy: AgentChatCopy;
