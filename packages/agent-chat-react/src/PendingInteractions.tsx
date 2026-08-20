@@ -2,10 +2,19 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { JsonValue, PendingInteraction } from "simplia-agent-chat/core";
+import {
+  resolveAgentChatCopy,
+  sacThemeAttributes,
+  type AgentChatCopy,
+  type AgentChatCopyOverrides,
+  type AgentChatTheme,
+} from "./copy.js";
 
 export interface PendingInteractionsProps {
   interactions: PendingInteraction[];
   onResolve: (interaction: PendingInteraction, resolution: JsonValue) => void | Promise<void>;
+  copy?: AgentChatCopyOverrides | undefined;
+  theme?: AgentChatTheme | undefined;
 }
 
 const AFFIRMATIVE_DECISIONS = new Set([
@@ -61,9 +70,11 @@ export function unlockInteractionResolution(
 function InteractionCard({
   interaction,
   onResolve,
+  copy,
 }: {
   interaction: PendingInteraction;
   onResolve: PendingInteractionsProps["onResolve"];
+  copy: AgentChatCopy;
 }) {
   const [answer, setAnswer] = useState("");
   const [resolution, setResolution] = useState(createInteractionResolutionState);
@@ -87,7 +98,7 @@ function InteractionCard({
         const unlocked = unlockInteractionResolution(resolutionRef.current);
         resolutionRef.current = unlocked;
         setResolution(unlocked);
-        setResolutionError("The response could not be submitted. Try again.");
+        setResolutionError(copy.resolutionError);
       });
   };
 
@@ -125,13 +136,13 @@ function InteractionCard({
     >
       <div className="sac-interaction-copy">
         <span className="sac-eyebrow">
-          {interaction.kind === "approval" ? "APPROVAL_REQUIRED" : "INPUT_REQUIRED"}
+          {interaction.kind === "approval" ? copy.approvalRequiredLabel : copy.inputRequiredLabel}
         </span>
         <h3 id={titleId}>{interaction.title}</h3>
         {interaction.description ? <p>{interaction.description}</p> : null}
         {requiresConfirmation ? (
           <p className="sac-interaction-confirm-hint">
-            Selecting a decision requires Confirm before it is submitted.
+            {copy.confirmationRequiredHint}
           </p>
         ) : null}
       </div>
@@ -140,37 +151,37 @@ function InteractionCard({
           <div
             className="sac-interaction-actions sac-interaction-confirm"
             role="group"
-            aria-label={`Confirm ${confirmation} for ${interaction.title}`}
+            aria-label={copy.confirmDecisionAriaLabel(confirmation, interaction.title)}
           >
             <p className="sac-interaction-confirm-choice">
-              Confirm decision: <strong>{confirmation}</strong>
+              {copy.confirmChoicePrefix} <strong>{copy.decisionLabel(confirmation)}</strong>
             </p>
             <button
               className={`sac-button${isAffirmativeDecision(confirmation) ? " sac-button-primary" : ""}`}
               type="button"
               disabled={resolution.inFlight}
-              aria-label={`Confirm ${confirmation} for ${interaction.title}`}
+              aria-label={copy.confirmDecisionAriaLabel(confirmation, interaction.title)}
               ref={confirmButtonRef}
               onClick={() => submitResolution({ decision: confirmation })}
             >
-              Confirm {confirmation}
+              {copy.confirmDecisionLabel(confirmation)}
             </button>
             <button
               className="sac-button"
               type="button"
               disabled={resolution.inFlight}
-              aria-label={`Back to decisions for ${interaction.title}`}
+              aria-label={copy.backAriaLabel(interaction.title)}
               onClick={() => {
                 const next = cancelApprovalConfirmation(resolutionRef.current);
                 resolutionRef.current = next;
                 setResolution(next);
               }}
             >
-              Back
+              {copy.backLabel}
             </button>
           </div>
         ) : (
-          <div className="sac-interaction-actions" role="group" aria-label={`Respond to ${interaction.title}`}>
+          <div className="sac-interaction-actions" role="group" aria-label={copy.respondAriaLabel(interaction.title)}>
             {decisions.map((decision) => (
               <button
                 className={`sac-button${isAffirmativeDecision(decision) ? " sac-button-primary" : ""}`}
@@ -179,14 +190,14 @@ function InteractionCard({
                 disabled={resolution.inFlight}
                 onClick={() => chooseDecision(decision)}
               >
-                {decision}
+                {copy.decisionLabel(decision)}
               </button>
             ))}
           </div>
         )
       ) : (
         <form className="sac-answer-form" onSubmit={submitAnswer}>
-          <label htmlFor={`${titleId}-answer`}>{`Answer for ${interaction.title}`}</label>
+          <label htmlFor={`${titleId}-answer`}>{copy.answerLabel(interaction.title)}</label>
           <div>
             <input
               id={`${titleId}-answer`}
@@ -200,7 +211,7 @@ function InteractionCard({
               type="submit"
               disabled={resolution.inFlight || !answer.trim()}
             >
-              Submit
+              {copy.submitAnswerLabel}
             </button>
           </div>
         </form>
@@ -210,13 +221,18 @@ function InteractionCard({
   );
 }
 
-export function PendingInteractions({ interactions, onResolve }: PendingInteractionsProps) {
+export function PendingInteractions({ interactions, onResolve, copy, theme }: PendingInteractionsProps) {
+  const resolved = resolveAgentChatCopy(copy);
   const pending = interactions.filter((interaction) => interaction.status === "pending");
   if (pending.length === 0) return null;
   return (
-    <div className="sac-interactions" aria-label="Pending agent interactions">
+    <div
+      className="sac-interactions sac-theme"
+      aria-label={resolved.pendingInteractionsLabel}
+      {...sacThemeAttributes(theme)}
+    >
       {pending.map((interaction) => (
-        <InteractionCard key={interaction.id} interaction={interaction} onResolve={onResolve} />
+        <InteractionCard key={interaction.id} interaction={interaction} onResolve={onResolve} copy={resolved} />
       ))}
     </div>
   );

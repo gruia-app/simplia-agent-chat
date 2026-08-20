@@ -1,3 +1,4 @@
+export { defaultAgentChatCopy, resolveAgentChatCopy, } from "./copy.js";
 export * from "./AgentChatShell.js";
 export * from "./ChatComposer.js";
 export * from "./ChatTimeline.js";

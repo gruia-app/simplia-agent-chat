@@ -1,5 +1,6 @@
 import { type ComponentType, type ReactNode } from "react";
 import { type JsonValue, type SurfaceActionRef, type SurfaceBlock, type SurfacePlugin } from "simplia-agent-chat/core";
+import { type AgentChatCopyOverrides, type AgentChatTheme } from "./copy.js";
 export interface SurfaceRendererProps<TPayload extends JsonValue> {
     block: SurfaceBlock<TPayload>;
     onAction?: ((action: SurfaceActionRef, input?: JsonValue) => void) | undefined;
@@ -22,7 +23,9 @@ export interface SurfaceHostProps {
     registry: ReactSurfaceRegistry;
     onAction?: ((block: SurfaceBlock, action: SurfaceActionRef, input?: JsonValue) => void) | undefined;
     fallback?: ((block: SurfaceBlock, reason: "unknown" | "invalid") => ReactNode) | undefined;
+    copy?: AgentChatCopyOverrides | undefined;
+    theme?: AgentChatTheme | undefined;
 }
-export declare function SurfaceHost({ block, registry, onAction, fallback }: SurfaceHostProps): import("react").JSX.Element;
+export declare function SurfaceHost({ block, registry, onAction, fallback, copy, theme }: SurfaceHostProps): import("react").JSX.Element;
 export {};
 //# sourceMappingURL=surface-registry.d.ts.map

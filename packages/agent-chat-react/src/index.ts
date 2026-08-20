@@ -1,3 +1,10 @@
+export {
+  defaultAgentChatCopy,
+  resolveAgentChatCopy,
+  type AgentChatCopy,
+  type AgentChatCopyOverrides,
+  type AgentChatTheme,
+} from "./copy.js";
 export * from "./AgentChatShell.js";
 export * from "./ChatComposer.js";
 export * from "./ChatTimeline.js";

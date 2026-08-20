@@ -1,7 +1,10 @@
 import type { JsonValue, PendingInteraction } from "simplia-agent-chat/core";
+import { type AgentChatCopyOverrides, type AgentChatTheme } from "./copy.js";
 export interface PendingInteractionsProps {
     interactions: PendingInteraction[];
     onResolve: (interaction: PendingInteraction, resolution: JsonValue) => void | Promise<void>;
+    copy?: AgentChatCopyOverrides | undefined;
+    theme?: AgentChatTheme | undefined;
 }
 export declare function isAffirmativeDecision(decision: string): boolean;
 export interface InteractionResolutionState {
@@ -16,5 +19,5 @@ export declare function beginInteractionResolution(state: InteractionResolutionS
     readonly state: InteractionResolutionState;
 };
 export declare function unlockInteractionResolution(state: InteractionResolutionState): InteractionResolutionState;
-export declare function PendingInteractions({ interactions, onResolve }: PendingInteractionsProps): import("react").JSX.Element | null;
+export declare function PendingInteractions({ interactions, onResolve, copy, theme }: PendingInteractionsProps): import("react").JSX.Element | null;
 //# sourceMappingURL=PendingInteractions.d.ts.map

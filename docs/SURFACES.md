@@ -84,7 +84,7 @@ Use reverse-domain-like application namespaces:
 - `summarize` throws;
 - the renderer throws.
 
-The built-in fallback may show only the surface kind, schema version and trusted `presentation.title`. It never renders the raw payload or exception text. Renderer exceptions stay inside the existing error boundary and use the same fallback.
+The built-in fallback may show only the surface kind, schema version and trusted `presentation.title`. It never renders the raw payload or exception text. Renderer exceptions stay inside the existing error boundary and use the same fallback. Hosts may translate that chrome through `SurfaceHost` / `AgentChatShell` `copy` formatters, which receive only kind, schema version and title primitives. A throwing formatter falls back to the English strings and still omits payload and exception text.
 
 A custom `fallback` receives the original block, including payload. The host does not sanitize that argument. Applications that supply a custom fallback are responsible for payload safety and must not render raw unknown payloads or exception messages.
 

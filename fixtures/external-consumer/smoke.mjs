@@ -73,12 +73,16 @@ const shellHtml = renderToStaticMarkup(createElement(AgentChatShell, {
   state,
   threadId: "thread-1",
   title: "External consumer",
+  headerLabel: "External application",
+  theme: "light",
   surfaceRegistry: registry,
   composerAriaLabel: "Message external consumer",
   onSubmit: () => undefined,
   onResolveInteraction: () => undefined,
 }));
-assert.match(shellHtml, /SHARED_AGENT_CHAT/);
+assert.doesNotMatch(shellHtml, /SHARED_AGENT_CHAT/);
+assert.match(shellHtml, /External application/);
+assert.match(shellHtml, /data-sac-theme="light"/);
 assert.match(shellHtml, /External consumer/);
 assert.match(shellHtml, /Message external consumer/);
 

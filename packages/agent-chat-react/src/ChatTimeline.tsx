@@ -11,6 +11,13 @@ import {
   type SurfaceActionRef,
   type SurfaceBlock,
 } from "simplia-agent-chat/core";
+import {
+  resolveAgentChatCopy,
+  sacThemeAttributes,
+  type AgentChatCopy,
+  type AgentChatCopyOverrides,
+  type AgentChatTheme,
+} from "./copy.js";
 import { ReactSurfaceRegistry, SurfaceHost } from "./surface-registry.js";
 
 export interface ChatTimelineProps {
@@ -20,6 +27,8 @@ export interface ChatTimelineProps {
   onSurfaceAction?: ((block: SurfaceBlock, action: SurfaceActionRef, input?: JsonValue) => void) | undefined;
   emptyLabel?: string | undefined;
   renderMessage?: ((item: ChatItem) => ReactNode) | undefined;
+  copy?: AgentChatCopyOverrides | undefined;
+  theme?: AgentChatTheme | undefined;
 }
 
 function stringifyDetail(value: JsonValue | undefined): string | null {
@@ -28,17 +37,26 @@ function stringifyDetail(value: JsonValue | undefined): string | null {
   return JSON.stringify(value, null, 2);
 }
 
-function ItemRow({ item, renderMessage }: { item: ChatItem; renderMessage?: ((item: ChatItem) => ReactNode) | undefined }) {
+function ItemRow({
+  item,
+  renderMessage,
+  copy,
+}: {
+  item: ChatItem;
+  renderMessage?: ((item: ChatItem) => ReactNode) | undefined;
+  copy: AgentChatCopy;
+}) {
   const text = item.text?.trim();
   const detail = stringifyDetail(item.output ?? item.input);
-  const label = item.role === "user" ? "You" : item.title ?? item.toolName ?? item.kind;
+  const label = item.role === "user" ? copy.userLabel : item.title ?? item.toolName ?? item.kind;
+  const statusLabel = copy.itemStatusLabel(item.status);
   const messageLike = item.kind === "message" || item.kind === "reasoning" || item.kind === "system";
 
   return (
-    <article className={`sac-item sac-item-${item.role ?? item.kind}`} aria-label={`${label}, ${item.status}`}>
+    <article className={`sac-item sac-item-${item.role ?? item.kind}`} aria-label={copy.itemAriaLabel(label, item.status)}>
       <div className="sac-item-meta">
         <span>{label}</span>
-        <span className={`sac-status sac-status-${item.status}`}>{item.status}</span>
+        <span className={`sac-status sac-status-${item.status}`}>{statusLabel}</span>
       </div>
       {text ? (
         <div className={messageLike ? "sac-message-text" : "sac-work-title"}>
@@ -47,7 +65,7 @@ function ItemRow({ item, renderMessage }: { item: ChatItem; renderMessage?: ((it
       ) : null}
       {!messageLike && detail ? (
         <details className="sac-work-detail">
-          <summary>Inspect details</summary>
+          <summary>{copy.inspectDetails}</summary>
           <pre>{detail}</pre>
         </details>
       ) : null}
@@ -60,9 +78,13 @@ export function ChatTimeline({
   threadId,
   surfaceRegistry,
   onSurfaceAction,
-  emptyLabel = "No messages yet. Send a precise instruction to begin.",
+  emptyLabel,
   renderMessage,
+  copy,
+  theme,
 }: ChatTimelineProps) {
+  const resolved = resolveAgentChatCopy(copy);
+  const emptyText = emptyLabel ?? resolved.emptyLabel;
   const turns = useMemo(() => selectThreadTurns(state, threadId), [state, threadId]);
   const surfacesByTurn = useMemo(() => {
     const next = new Map<string, SurfaceBlock[]>();
@@ -74,36 +96,45 @@ export function ChatTimeline({
   }, [state, threadId]);
 
   if (turns.length === 0 && (surfacesByTurn.get("thread")?.length ?? 0) === 0) {
-    return <div className="sac-empty">{emptyLabel}</div>;
+    return (
+      <div className="sac-empty sac-theme" {...sacThemeAttributes(theme)}>
+        {emptyText}
+      </div>
+    );
   }
 
   return (
     <div
-      className="sac-timeline"
+      className="sac-timeline sac-theme"
       role="log"
       aria-live="off"
       aria-relevant="additions text"
       aria-atomic="false"
-      aria-label="Conversation activity"
+      aria-label={resolved.conversationActivityLabel}
+      {...sacThemeAttributes(theme)}
     >
       {(surfacesByTurn.get("thread") ?? []).map((surface) => (
         <SurfaceHost
           key={surface.id}
           block={surface}
           registry={surfaceRegistry}
+          copy={resolved}
+          {...(theme ? { theme } : {})}
           {...(onSurfaceAction ? { onAction: onSurfaceAction } : {})}
         />
       ))}
       {turns.map((turn) => (
-        <section className="sac-turn" key={turn.id} aria-label={`Turn ${turn.status}`}>
+        <section className="sac-turn" key={turn.id} aria-label={resolved.turnAriaLabel(turn.status)}>
           {selectTurnItems(state, turn.id).map((item) => (
-            <ItemRow item={item} key={item.id} {...(renderMessage ? { renderMessage } : {})} />
+            <ItemRow item={item} key={item.id} copy={resolved} {...(renderMessage ? { renderMessage } : {})} />
           ))}
           {(surfacesByTurn.get(turn.id) ?? []).map((surface) => (
             <SurfaceHost
               key={surface.id}
               block={surface}
               registry={surfaceRegistry}
+              copy={resolved}
+              {...(theme ? { theme } : {})}
               {...(onSurfaceAction ? { onAction: onSurfaceAction } : {})}
             />
           ))}

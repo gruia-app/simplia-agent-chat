@@ -12,6 +12,13 @@ import {
 } from "simplia-agent-chat/core";
 import { ChatComposer, type ChatComposerProps } from "./ChatComposer.js";
 import { ChatTimeline } from "./ChatTimeline.js";
+import {
+  resolveAgentChatCopy,
+  sacThemeAttributes,
+  type AgentChatCopy,
+  type AgentChatCopyOverrides,
+  type AgentChatTheme,
+} from "./copy.js";
 import { PendingInteractions } from "./PendingInteractions.js";
 import { ReactSurfaceRegistry, SurfaceHost } from "./surface-registry.js";
 import { useFollowScroll } from "./use-follow-scroll.js";
@@ -42,6 +49,9 @@ export interface AgentChatShellProps {
   artifactStageLabel?: string | undefined;
   renderArtifactStage?: ((props: AgentChatSurfaceSlotProps) => ReactNode) | undefined;
   renderFullscreenSurfaces?: ((props: AgentChatSurfaceSlotProps) => ReactNode) | undefined;
+  copy?: AgentChatCopyOverrides | undefined;
+  theme?: AgentChatTheme | undefined;
+  headerLabel?: ReactNode | undefined;
 }
 
 function surfaceSlotProps(
@@ -61,7 +71,11 @@ function DefaultArtifactStage({
   surfaceRegistry,
   onSurfaceAction,
   label,
-}: AgentChatSurfaceSlotProps & { label: string }) {
+  copy,
+}: AgentChatSurfaceSlotProps & {
+  label: string;
+  copy: AgentChatCopy;
+}) {
   const headingId = useId();
   return (
     <aside className="sac-artifact-stage" aria-labelledby={headingId}>
@@ -74,6 +88,7 @@ function DefaultArtifactStage({
             key={surface.id}
             block={surface}
             registry={surfaceRegistry}
+            copy={copy}
             {...(onSurfaceAction ? { onAction: onSurfaceAction } : {})}
           />
         ))}
@@ -99,10 +114,15 @@ export function AgentChatShell({
   emptyLabel,
   composer,
   renderMessage,
-  artifactStageLabel = "Artifacts",
+  artifactStageLabel,
   renderArtifactStage,
   renderFullscreenSurfaces,
+  copy,
+  theme,
+  headerLabel,
 }: AgentChatShellProps) {
+  const resolvedCopy = useMemo(() => resolveAgentChatCopy(copy), [copy]);
+  const stageLabel = artifactStageLabel ?? resolvedCopy.artifactStageLabel;
   const interactions = useMemo(
     () => Object.values(state.interactions).filter((interaction) => interaction.threadId === threadId),
     [state.interactions, threadId],
@@ -142,24 +162,25 @@ export function AgentChatShell({
           state={state}
           threadId={threadId}
           surfaceRegistry={surfaceRegistry}
-          {...(emptyLabel ? { emptyLabel } : {})}
+          copy={resolvedCopy}
+          {...(emptyLabel !== undefined ? { emptyLabel } : {})}
           {...(renderMessage ? { renderMessage } : {})}
           {...(onSurfaceAction ? { onSurfaceAction } : {})}
         />
       </div>
       {follow.mode === "free-scrolling" ? (
         <button className="sac-jump-button" type="button" onClick={() => follow.scrollToEnd("smooth")}>
-          Return to live
+          {resolvedCopy.jumpToLive}
         </button>
       ) : null}
     </div>
   );
 
   return (
-    <section className="sac-shell" aria-label={title}>
+    <section className="sac-shell" aria-label={title} {...sacThemeAttributes(theme)}>
       <header className="sac-header">
         <div>
-          <span className="sac-eyebrow">SHARED_AGENT_CHAT</span>
+          {headerLabel ? <div className="sac-header-label">{headerLabel}</div> : null}
           <h2>{title}</h2>
           {subtitle ? <p>{subtitle}</p> : null}
         </div>
@@ -172,7 +193,13 @@ export function AgentChatShell({
           <div className="sac-artifact-column">
             {renderArtifactStage
               ? renderArtifactStage(slotProps)
-              : <DefaultArtifactStage {...slotProps} label={artifactStageLabel} />}
+              : (
+                <DefaultArtifactStage
+                  {...slotProps}
+                  label={stageLabel}
+                  copy={resolvedCopy}
+                />
+              )}
           </div>
         </div>
       ) : (
@@ -182,13 +209,18 @@ export function AgentChatShell({
         ? renderFullscreenSurfaces(surfaceSlotProps(fullscreenSurfaces, surfaceRegistry, onSurfaceAction))
         : null}
       <div className="sac-input-rail">
-        <PendingInteractions interactions={interactions} onResolve={onResolveInteraction} />
+        <PendingInteractions
+          interactions={interactions}
+          onResolve={onResolveInteraction}
+          copy={resolvedCopy}
+        />
         {composer ?? (
           <ChatComposer
             onSubmit={onSubmit}
             ariaLabel={composerAriaLabel}
-            {...(composerPlaceholder ? { placeholder: composerPlaceholder } : {})}
+            copy={resolvedCopy}
             busy={busy}
+            {...(composerPlaceholder !== undefined ? { placeholder: composerPlaceholder } : {})}
           />
         )}
       </div>

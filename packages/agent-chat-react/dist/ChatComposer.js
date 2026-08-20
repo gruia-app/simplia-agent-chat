@@ -1,7 +1,12 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useCallback, useId, useRef, useState } from "react";
-export function ChatComposer({ onSubmit, ariaLabel, placeholder = "Describe the next action…", disabled = false, busy = false, submitLabel = "Send", hint = "Enter to send · Shift+Enter for a new line", initialValue = "", }) {
+import { resolveAgentChatCopy, sacThemeAttributes, } from "./copy.js";
+export function ChatComposer({ onSubmit, ariaLabel, placeholder, disabled = false, busy = false, submitLabel, hint, initialValue = "", copy, theme, }) {
+    const resolved = resolveAgentChatCopy(copy);
+    const placeholderText = placeholder ?? resolved.composerPlaceholder;
+    const submitText = submitLabel ?? resolved.composerSubmitLabel;
+    const hintText = hint ?? resolved.composerHint;
     const [value, setValue] = useState(initialValue);
     const inputId = useId();
     const composingRef = useRef(false);
@@ -30,10 +35,10 @@ export function ChatComposer({ onSubmit, ariaLabel, placeholder = "Describe the 
         event.preventDefault();
         submit();
     };
-    return (_jsxs("form", { className: "sac-composer", onSubmit: onFormSubmit, children: [_jsx("label", { className: "sac-sr-only", htmlFor: inputId, children: ariaLabel }), _jsx("textarea", { id: inputId, className: "sac-composer-input", value: value, onChange: (event) => setValue(event.target.value), onKeyDown: onKeyDown, onCompositionStart: () => {
+    return (_jsxs("form", { className: "sac-composer sac-theme", onSubmit: onFormSubmit, ...sacThemeAttributes(theme), children: [_jsx("label", { className: "sac-sr-only", htmlFor: inputId, children: ariaLabel }), _jsx("textarea", { id: inputId, className: "sac-composer-input", value: value, onChange: (event) => setValue(event.target.value), onKeyDown: onKeyDown, onCompositionStart: () => {
                     composingRef.current = true;
                 }, onCompositionEnd: () => {
                     composingRef.current = false;
-                }, "aria-label": ariaLabel, placeholder: placeholder, disabled: disabled, rows: 2 }), _jsxs("div", { className: "sac-composer-footer", children: [_jsx("span", { className: "sac-composer-hint", children: hint }), _jsx("button", { className: "sac-button sac-button-primary", type: "submit", disabled: !canSubmit, children: busy ? "Working…" : submitLabel })] })] }));
+                }, "aria-label": ariaLabel, placeholder: placeholderText, disabled: disabled, rows: 2 }), _jsxs("div", { className: "sac-composer-footer", children: [_jsx("span", { className: "sac-composer-hint", children: hintText }), _jsx("button", { className: "sac-button sac-button-primary", type: "submit", disabled: !canSubmit, children: busy ? resolved.composerBusyLabel : submitText })] })] }));
 }
 //# sourceMappingURL=ChatComposer.js.map

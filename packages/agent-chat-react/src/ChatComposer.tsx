@@ -1,6 +1,12 @@
 "use client";
 
 import { useCallback, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import {
+  resolveAgentChatCopy,
+  sacThemeAttributes,
+  type AgentChatCopyOverrides,
+  type AgentChatTheme,
+} from "./copy.js";
 
 export interface ChatComposerProps {
   onSubmit: (value: string) => void | Promise<void>;
@@ -11,18 +17,26 @@ export interface ChatComposerProps {
   submitLabel?: string | undefined;
   hint?: string | undefined;
   initialValue?: string | undefined;
+  copy?: AgentChatCopyOverrides | undefined;
+  theme?: AgentChatTheme | undefined;
 }
 
 export function ChatComposer({
   onSubmit,
   ariaLabel,
-  placeholder = "Describe the next action…",
+  placeholder,
   disabled = false,
   busy = false,
-  submitLabel = "Send",
-  hint = "Enter to send · Shift+Enter for a new line",
+  submitLabel,
+  hint,
   initialValue = "",
+  copy,
+  theme,
 }: ChatComposerProps) {
+  const resolved = resolveAgentChatCopy(copy);
+  const placeholderText = placeholder ?? resolved.composerPlaceholder;
+  const submitText = submitLabel ?? resolved.composerSubmitLabel;
+  const hintText = hint ?? resolved.composerHint;
   const [value, setValue] = useState(initialValue);
   const inputId = useId();
   const composingRef = useRef(false);
@@ -57,7 +71,7 @@ export function ChatComposer({
   };
 
   return (
-    <form className="sac-composer" onSubmit={onFormSubmit}>
+    <form className="sac-composer sac-theme" onSubmit={onFormSubmit} {...sacThemeAttributes(theme)}>
       <label className="sac-sr-only" htmlFor={inputId}>
         {ariaLabel}
       </label>
@@ -74,14 +88,14 @@ export function ChatComposer({
           composingRef.current = false;
         }}
         aria-label={ariaLabel}
-        placeholder={placeholder}
+        placeholder={placeholderText}
         disabled={disabled}
         rows={2}
       />
       <div className="sac-composer-footer">
-        <span className="sac-composer-hint">{hint}</span>
+        <span className="sac-composer-hint">{hintText}</span>
         <button className="sac-button sac-button-primary" type="submit" disabled={!canSubmit}>
-          {busy ? "Working…" : submitLabel}
+          {busy ? resolved.composerBusyLabel : submitText}
         </button>
       </div>
     </form>
