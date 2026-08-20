@@ -7,7 +7,9 @@ export {
 } from "./copy.js";
 export * from "./AgentChatShell.js";
 export * from "./ChatComposer.js";
+export * from "./ChatRunStatus.js";
 export * from "./ChatTimeline.js";
+export * from "./interrupt.js";
 export * from "./PendingInteractions.js";
 export * from "./surface-registry.js";
 export * from "./use-follow-scroll.js";

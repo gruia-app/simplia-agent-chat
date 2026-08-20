@@ -8,7 +8,7 @@ Provider-neutral building blocks for agentic chat interfaces. The runtime keeps 
 The project is framework-light by design:
 
 - `simplia-agent-chat/core` — protocol, deterministic reducer, SSE decoder, capability negotiation, surfaces and provider adapters.
-- `simplia-agent-chat/react` — accessible React shell, composer, timeline, pending interactions and trusted surface registry.
+- `simplia-agent-chat/react` — accessible React shell, composer, timeline, run status, pending interactions and trusted surface registry.
 - `simplia-agent-chat/adapters/acv2` — optional ACV2 durable-event adapter and provider capability profiles.
 
 ## Why
@@ -70,6 +70,8 @@ export function Chat() {
 The application owns transport, authentication, persistence, policy enforcement and domain mutations. The UI only emits decisions and surface actions; the server must validate them again. `copy` and granular labels (`emptyLabel`, `composerPlaceholder`, `artifactStageLabel`) change display text only: event IDs, decision values, status values and payloads stay protocol data. Granular props win over `copy`, which wins over English defaults. The shell has no library brand unless the application passes `headerLabel`. See [theming](docs/THEMING.md) and [integration](docs/INTEGRATION.md).
 
 Surfaces may set `presentation.preferredSurface` to `inline` (the default), `panel`, or `fullscreen`. Inline surfaces stay in the transcript. Panel surfaces use an additive artifact stage, which a host can replace through `renderArtifactStage`. Fullscreen surfaces stay host-owned through `renderFullscreenSurfaces` and are never inlined or shown in a library modal.
+
+Derived run state (`selectThreadRunState`) is read-only. Pass `onInterrupt` when the application can request a stop; the shell reports only that a stop was requested until a protocol event confirms the outcome. `renderMessage` is application-owned and fail-closed. Composer `actions` and `composerActions` never auto-send.
 
 ## Design principles
 

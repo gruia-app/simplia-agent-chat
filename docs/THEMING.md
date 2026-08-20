@@ -46,7 +46,7 @@ Pass `theme="light"` to `AgentChatShell` or a standalone component. The same att
 
 ## `.sac-theme`
 
-Standalone `ChatComposer`, `ChatTimeline`, `PendingInteractions` and `SurfaceHost` add `.sac-theme` so they can be used outside the shell. Optional `theme="dark" | "light"` sets `data-sac-theme`. Applications may also wrap a group of standalone components:
+Standalone `ChatComposer`, `ChatTimeline`, `ChatRunStatus`, `PendingInteractions` and `SurfaceHost` add `.sac-theme` so they can be used outside the shell. Optional `theme="dark" | "light"` sets `data-sac-theme`. Applications may also wrap a group of standalone components:
 
 ```html
 <div class="sac-theme" data-sac-theme="light">
@@ -82,4 +82,4 @@ Do not pass an executable theme object. The public contract is the `theme` union
 
 ## Accessibility
 
-Both bundled palettes target WCAG 2.2 AA for body text, muted text, placeholders, status text and controls. Focus remains visible. Coarse pointers keep 2.75rem targets. `prefers-reduced-motion` disables smooth scrolling. Transcript streaming stays `aria-live="off"`. Status is labeled in text, not color alone.
+Both bundled palettes target WCAG 2.2 AA for body text, muted text, placeholders, status text and controls. Focus remains visible. Coarse pointers keep 2.75rem targets. `prefers-reduced-motion` disables smooth scrolling. Transcript streaming stays `aria-live="off"`. Status is labeled in text, not color alone. Queued and pending use a dashed border; interrupted and cancelled use a dotted border. Run status (`.sac-run-status`) and composer actions (`.sac-composer-actions`) consume the same semantic tokens.

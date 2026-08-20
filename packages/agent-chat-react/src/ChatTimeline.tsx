@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { Component, useMemo, type ReactNode } from "react";
 import {
   selectThreadSurfaces,
   selectThreadTurns,
@@ -37,6 +37,62 @@ function stringifyDetail(value: JsonValue | undefined): string | null {
   return JSON.stringify(value, null, 2);
 }
 
+class MessageErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode; resetKey: string },
+  { failed: boolean; resetKey: string }
+> {
+  constructor(props: { children: ReactNode; fallback: ReactNode; resetKey: string }) {
+    super(props);
+    this.state = { failed: false, resetKey: props.resetKey };
+  }
+
+  static getDerivedStateFromProps(
+    props: { resetKey: string },
+    state: { failed: boolean; resetKey: string },
+  ) {
+    return props.resetKey === state.resetKey ? null : { failed: false, resetKey: props.resetKey };
+  }
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+function isMessageLike(item: ChatItem): boolean {
+  return item.kind === "message" || item.kind === "reasoning" || item.kind === "system";
+}
+
+function SafeMessageFallback({ item, copy }: { item: ChatItem; copy: AgentChatCopy }) {
+  const text = item.text?.trim() ? item.text : copy.messageRendererFallback;
+  return <>{text}</>;
+}
+
+function RenderedMessage({
+  item,
+  renderMessage,
+  copy,
+}: {
+  item: ChatItem;
+  renderMessage: (item: ChatItem) => ReactNode;
+  copy: AgentChatCopy;
+}) {
+  const fallback = <SafeMessageFallback item={item} copy={copy} />;
+  const resetKey = `${item.id}:${item.status}:${item.text ?? ""}`;
+  try {
+    return (
+      <MessageErrorBoundary fallback={fallback} resetKey={resetKey}>
+        {renderMessage(item)}
+      </MessageErrorBoundary>
+    );
+  } catch {
+    return fallback;
+  }
+}
+
 function ItemRow({
   item,
   renderMessage,
@@ -50,7 +106,8 @@ function ItemRow({
   const detail = stringifyDetail(item.output ?? item.input);
   const label = item.role === "user" ? copy.userLabel : item.title ?? item.toolName ?? item.kind;
   const statusLabel = copy.itemStatusLabel(item.status);
-  const messageLike = item.kind === "message" || item.kind === "reasoning" || item.kind === "system";
+  const messageLike = isMessageLike(item);
+  const useRenderer = Boolean(messageLike && renderMessage);
 
   return (
     <article className={`sac-item sac-item-${item.role ?? item.kind}`} aria-label={copy.itemAriaLabel(label, item.status)}>
@@ -58,9 +115,13 @@ function ItemRow({
         <span>{label}</span>
         <span className={`sac-status sac-status-${item.status}`}>{statusLabel}</span>
       </div>
-      {text ? (
+      {useRenderer && renderMessage ? (
+        <div className="sac-message-text">
+          <RenderedMessage item={item} renderMessage={renderMessage} copy={copy} />
+        </div>
+      ) : text ? (
         <div className={messageLike ? "sac-message-text" : "sac-work-title"}>
-          {messageLike && renderMessage ? renderMessage(item) : text}
+          {text}
         </div>
       ) : null}
       {!messageLike && detail ? (

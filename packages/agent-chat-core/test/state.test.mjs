@@ -3,9 +3,12 @@ import test from "node:test";
 
 import {
   createInitialChatState,
+  isTerminalTurnStatus,
   reduceChatEvent,
   replayChatEvents,
+  selectActiveTurn,
   selectPendingInteraction,
+  selectThreadRunState,
   selectThreadSurfaces,
   selectThreadTurns,
   selectTurnItems,
@@ -589,4 +592,142 @@ test("selectThreadSurfaces treats missing placement as inline and preserves stat
   const selectedMissing = selectThreadSurfaces(state, "thread-1", "inline")[0];
   assert.strictEqual(selectedMissing, state.surfaces["surface-missing"]);
   assert.deepEqual(state.surfaces, before);
+});
+
+test("isTerminalTurnStatus covers only completed, failed, interrupted and cancelled", () => {
+  assert.equal(isTerminalTurnStatus("completed"), true);
+  assert.equal(isTerminalTurnStatus("failed"), true);
+  assert.equal(isTerminalTurnStatus("interrupted"), true);
+  assert.equal(isTerminalTurnStatus("cancelled"), true);
+  for (const status of ["queued", "running", "waiting_approval", "waiting_input"]) {
+    assert.equal(isTerminalTurnStatus(status), false, status);
+  }
+});
+
+test("selectActiveTurn returns the latest non-terminal turn without copying it", () => {
+  const state = replayChatEvents([
+    chatEvent("thread.upsert", baseThread()),
+    chatEvent("turn.upsert", baseTurn({ id: "turn-old", status: "completed", startedAt: "2026-08-13T10:00:00.000Z" }), {
+      id: "old-turn",
+      turnId: "turn-old",
+    }),
+    chatEvent("turn.upsert", baseTurn({ id: "turn-active", status: "running", startedAt: "2026-08-13T11:00:00.000Z" }), {
+      id: "active-turn",
+      turnId: "turn-active",
+    }),
+    chatEvent("turn.upsert", baseTurn({ id: "turn-queued", status: "queued", startedAt: "2026-08-13T12:00:00.000Z" }), {
+      id: "queued-turn",
+      turnId: "turn-queued",
+    }),
+  ]);
+  Object.values(state.turns).forEach((turn) => Object.freeze(turn));
+  const before = structuredClone(state.turns);
+  const active = selectActiveTurn(state, "thread-1");
+  assert.equal(active?.id, "turn-queued");
+  assert.strictEqual(active, state.turns["turn-queued"]);
+  assert.equal(selectActiveTurn(state, "missing"), undefined);
+  assert.deepEqual(state.turns, before);
+});
+
+test("selectThreadRunState derives waiting, queued, streaming, busy, terminal, error and idle", () => {
+  const empty = createInitialChatState();
+  assert.deepEqual(selectThreadRunState(empty, "thread-1"), { phase: "idle" });
+
+  const errorThread = replayChatEvents([
+    chatEvent("thread.upsert", baseThread({ status: "error" })),
+  ]);
+  assert.deepEqual(selectThreadRunState(errorThread, "thread-1"), { phase: "failed" });
+
+  let waiting = replayChatEvents([
+    chatEvent("thread.upsert", baseThread()),
+    chatEvent("turn.upsert", baseTurn({ status: "running" })),
+    chatEvent("item.upsert", baseItem({ status: "streaming", text: "partial" })),
+    chatEvent("interaction.requested", baseInteraction()),
+  ]);
+  Object.values(waiting.turns).forEach((turn) => Object.freeze(turn));
+  Object.values(waiting.interactions).forEach((interaction) => Object.freeze(interaction));
+  const waitingBefore = structuredClone({ turns: waiting.turns, interactions: waiting.interactions, items: waiting.items });
+  const waitingState = selectThreadRunState(waiting, "thread-1");
+  assert.equal(waitingState.phase, "waiting");
+  assert.equal(waitingState.waitingKind, "approval");
+  assert.strictEqual(waitingState.turn, waiting.turns["turn-1"]);
+  assert.strictEqual(waitingState.pendingInteraction, waiting.interactions["interaction-1"]);
+  assert.equal(waitingState.streaming, undefined);
+  assert.deepEqual({ turns: waiting.turns, interactions: waiting.interactions, items: waiting.items }, waitingBefore);
+
+  waiting = reduceChatEvent(waiting, chatEvent("turn.status", { status: "waiting_input" }, { id: "wait-input" })).state;
+  waiting = reduceChatEvent(waiting, chatEvent("interaction.resolved", {
+    interactionId: "interaction-1",
+    resolution: { decision: "accept" },
+    resolvedAt: ISO,
+  }, { id: "resolved-wait" })).state;
+  const inputWait = selectThreadRunState(waiting, "thread-1");
+  assert.equal(inputWait.phase, "waiting");
+  assert.equal(inputWait.waitingKind, "input");
+  assert.equal(inputWait.pendingInteraction, undefined);
+
+  const queued = replayChatEvents([
+    chatEvent("turn.upsert", baseTurn({ status: "queued" })),
+  ]);
+  assert.deepEqual(selectThreadRunState(queued, "thread-1"), {
+    phase: "queued",
+    turn: queued.turns["turn-1"],
+  });
+  assert.strictEqual(selectThreadRunState(queued, "thread-1").turn, queued.turns["turn-1"]);
+
+  const streaming = replayChatEvents([
+    chatEvent("turn.upsert", baseTurn({ status: "running" })),
+    chatEvent("item.upsert", baseItem({ status: "streaming", text: "hello" })),
+  ]);
+  const streamingState = selectThreadRunState(streaming, "thread-1");
+  assert.equal(streamingState.phase, "streaming");
+  assert.equal(streamingState.streaming, true);
+  assert.strictEqual(streamingState.turn, streaming.turns["turn-1"]);
+
+  const busy = replayChatEvents([
+    chatEvent("turn.upsert", baseTurn({ status: "running" })),
+    chatEvent("item.upsert", baseItem({ status: "pending", text: "queued work" })),
+  ]);
+  const busyState = selectThreadRunState(busy, "thread-1");
+  assert.equal(busyState.phase, "busy");
+  assert.equal(busyState.streaming, undefined);
+  assert.strictEqual(busyState.turn, busy.turns["turn-1"]);
+
+  for (const status of ["completed", "failed", "interrupted", "cancelled"]) {
+    const terminal = replayChatEvents([
+      chatEvent("turn.upsert", baseTurn({ status, completedAt: ISO })),
+    ]);
+    const derived = selectThreadRunState(terminal, "thread-1");
+    assert.equal(derived.phase, status);
+    assert.strictEqual(derived.turn, terminal.turns["turn-1"]);
+    assert.equal(selectActiveTurn(terminal, "thread-1"), undefined);
+  }
+});
+
+test("selectThreadRunState prefers waiting over queued and latest active over older terminals", () => {
+  const state = replayChatEvents([
+    chatEvent("thread.upsert", baseThread()),
+    chatEvent("turn.upsert", baseTurn({
+      id: "turn-done",
+      status: "completed",
+      startedAt: "2026-08-13T09:00:00.000Z",
+    }), { id: "done-turn", turnId: "turn-done" }),
+    chatEvent("turn.upsert", baseTurn({
+      id: "turn-queued",
+      status: "queued",
+      startedAt: "2026-08-13T10:00:00.000Z",
+    }), { id: "queued-turn", turnId: "turn-queued" }),
+    chatEvent("interaction.requested", baseInteraction({
+      id: "question-1",
+      turnId: "turn-queued",
+      kind: "question",
+      title: "Need a path",
+    }), { id: "ask", turnId: "turn-queued" }),
+  ]);
+  const derived = selectThreadRunState(state, "thread-1");
+  assert.equal(derived.phase, "waiting");
+  assert.equal(derived.waitingKind, "input");
+  assert.strictEqual(derived.turn, state.turns["turn-queued"]);
+  assert.strictEqual(derived.pendingInteraction, state.interactions["question-1"]);
+  assert.strictEqual(selectActiveTurn(state, "thread-1"), state.turns["turn-queued"]);
 });

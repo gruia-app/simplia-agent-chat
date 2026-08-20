@@ -6,15 +6,22 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Window } from "happy-dom";
 import {
   beginInteractionResolution,
+  beginInterruptRequest,
   cancelApprovalConfirmation,
   AgentChatShell,
   ChatComposer,
+  ChatRunStatus,
   ChatTimeline,
+  completeInterruptRequest,
   createInteractionResolutionState,
+  createInterruptRequestState,
   defaultAgentChatCopy,
+  failInterruptRequest,
   isAffirmativeDecision,
   PendingInteractions,
   ReactSurfaceRegistry,
+  reconcileInterruptRequest,
+  resetInterruptRequest,
   resolveAgentChatCopy,
   selectApprovalDecision,
   SurfaceHost,
@@ -43,9 +50,11 @@ async function withDom(run) {
     document: window.document,
     navigator: window.navigator,
     HTMLElement: window.HTMLElement,
+    Element: window.Element,
     Node: window.Node,
     Event: window.Event,
     MouseEvent: window.MouseEvent,
+    KeyboardEvent: window.KeyboardEvent,
     IS_REACT_ACT_ENVIRONMENT: true,
   };
   const previous = new Map(
@@ -1408,4 +1417,786 @@ test("explicit granular props keep precedence over copy overrides", () => {
   assert.match(html, />Prop artifacts</);
   assert.doesNotMatch(html, /Copy composer/);
   assert.doesNotMatch(html, /Copy artifacts/);
+});
+
+function runningState(status = "running", itemStatus = "streaming") {
+  return {
+    ...emptyState,
+    threads: {
+      [threadId]: { id: threadId, appKey: "test", status: "active" },
+    },
+    turns: {
+      "turn-1": { id: "turn-1", threadId, status, itemIds: ["message-1"] },
+    },
+    items: {
+      "message-1": {
+        id: "message-1",
+        threadId,
+        turnId: "turn-1",
+        kind: "message",
+        role: "assistant",
+        status: itemStatus,
+        text: "Working on the next step.",
+        input: { secret: "item-input-secret" },
+        output: { secret: "item-output-secret" },
+        metadata: { secret: "item-metadata-secret" },
+      },
+    },
+  };
+}
+
+function setTextareaValue(window, textarea, value) {
+  const propsKey = Object.keys(textarea).find((key) => key.startsWith("__reactProps$"));
+  const onChange = propsKey ? textarea[propsKey]?.onChange : undefined;
+  if (typeof onChange === "function") {
+    onChange({ target: { value } });
+    return;
+  }
+  const tracker = textarea._valueTracker;
+  if (tracker && typeof tracker.setValue === "function") tracker.setValue("");
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+  if (setter) setter.call(textarea, value);
+  else textarea.value = value;
+  textarea.dispatchEvent(new window.Event("input", { bubbles: true }));
+}
+
+test("interrupt helpers reject a second request for the same turn and unlock after failure", () => {
+  const idle = createInterruptRequestState();
+  assert.equal(idle.status, "idle");
+  const first = beginInterruptRequest(idle, "turn-1");
+  assert.equal(first.accepted, true);
+  assert.equal(first.state.status, "submitting");
+  assert.equal(first.state.turnId, "turn-1");
+
+  const duplicateSubmitting = beginInterruptRequest(first.state, "turn-1");
+  assert.equal(duplicateSubmitting.accepted, false);
+  assert.strictEqual(duplicateSubmitting.state, first.state);
+
+  const submitted = completeInterruptRequest(first.state);
+  assert.equal(submitted.status, "submitted");
+  const duplicateSubmitted = beginInterruptRequest(submitted, "turn-1");
+  assert.equal(duplicateSubmitted.accepted, false);
+  assert.strictEqual(duplicateSubmitted.state, submitted);
+
+  const failed = failInterruptRequest(first.state);
+  assert.equal(failed.status, "failed");
+  const retry = beginInterruptRequest(failed, "turn-1");
+  assert.equal(retry.accepted, true);
+  assert.equal(retry.state.status, "submitting");
+
+  const reset = resetInterruptRequest(submitted);
+  assert.equal(reset.status, "idle");
+  assert.equal(reset.turnId, undefined);
+  assert.strictEqual(resetInterruptRequest(idle), idle);
+
+  const active = { id: "turn-1", threadId, status: "running", itemIds: [] };
+  assert.strictEqual(reconcileInterruptRequest(first.state, active), first.state);
+  assert.equal(reconcileInterruptRequest(first.state, { ...active, id: "turn-2" }).status, "idle");
+  assert.equal(reconcileInterruptRequest(first.state, { ...active, status: "completed" }).status, "idle");
+  assert.equal(reconcileInterruptRequest(first.state, undefined).status, "idle");
+});
+
+test("run status is theme and copy aware and keeps Stop separate from Send", () => {
+  const html = renderToStaticMarkup(
+    createElement(ChatRunStatus, {
+      runState: { phase: "streaming", turn: runningState().turns["turn-1"], streaming: true },
+      onInterrupt() {},
+      copy: {
+        runPhaseLabel: (phase) => `fase:${phase}`,
+        interruptLabel: "Detener",
+        interruptDescription: "Solicita detener el turno actual",
+      },
+      theme: "light",
+    }),
+  );
+  assert.match(html, /class="sac-run-status sac-theme"/);
+  assert.match(html, /data-sac-theme="light"/);
+  assert.match(html, /data-sac-run-phase="streaming"/);
+  assert.match(html, /fase:streaming/);
+  assert.match(html, />Detener</);
+  assert.match(html, /aria-describedby="[^"]+"/);
+  assert.match(html, /Solicita detener el turno actual/);
+  assert.match(html, /type="button"/);
+  assert.doesNotMatch(html, />Send</);
+  assert.doesNotMatch(html, /cancelled|interrupted/i);
+});
+
+test("shell shows Stop only when an active turn and interrupt handler both exist", () => {
+  const withoutHandler = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: runningState(),
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+  assert.match(withoutHandler, /Streaming/);
+  assert.doesNotMatch(withoutHandler, />Stop</);
+
+  const idleWithHandler = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: emptyState,
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+      onInterrupt() {},
+    }),
+  );
+  assert.doesNotMatch(idleWithHandler, />Stop</);
+  assert.doesNotMatch(idleWithHandler, /sac-run-status/);
+
+  const withHandler = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: runningState(),
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+      onInterrupt() {},
+    }),
+  );
+  assert.match(withHandler, />Stop</);
+  assert.match(withHandler, /aria-describedby="[^"]+"/);
+  assert.match(withHandler, /Requests that the provider stop the current turn/);
+  assert.match(withHandler, />Send</);
+  assert.doesNotMatch(withHandler, /cancelled/);
+});
+
+test("custom run status slot replaces default chrome", () => {
+  let received;
+  const html = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: runningState(),
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+      onInterrupt() {},
+      renderRunStatus: (props) => {
+        received = props;
+        return createElement("div", { "data-custom-run": "host" }, props.runState.phase);
+      },
+    }),
+  );
+  assert.ok(received);
+  assert.equal(received.runState.phase, "streaming");
+  assert.equal(received.activeTurn.id, "turn-1");
+  assert.match(html, /data-custom-run="host"/);
+  assert.doesNotMatch(html, /sac-run-status/);
+  assert.doesNotMatch(html, />Stop</);
+});
+
+test("composerActions reach only the default composer", () => {
+  const withDefault = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: emptyState,
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      composerActions: createElement("button", { type: "button" }, "Insert note"),
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+  assert.match(withDefault, /sac-composer-actions/);
+  assert.match(withDefault, />Insert note</);
+
+  const withCustom = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: emptyState,
+      threadId,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      composer: createElement("div", { "data-app-composer": "custom" }, "Host composer"),
+      composerActions: createElement("button", { type: "button" }, "Insert note"),
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+    }),
+  );
+  assert.match(withCustom, /data-app-composer="custom"/);
+  assert.doesNotMatch(withCustom, /Insert note/);
+  assert.doesNotMatch(withCustom, /sac-composer-actions/);
+});
+
+test("interrupt request stays honest and never claims cancelled until protocol confirms", async () => {
+  await withDom(async ({ document }) => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const state = runningState();
+    let rejectInterrupt;
+    let calls = 0;
+    const pending = new Promise((_, reject) => {
+      rejectInterrupt = reject;
+    });
+
+    await act(async () => {
+      root.render(createElement(AgentChatShell, {
+        state,
+        threadId,
+        surfaceRegistry: new ReactSurfaceRegistry(),
+        title: "Application copilot",
+        composerAriaLabel: "Message application copilot",
+        onSubmit() {},
+        onResolveInteraction() {},
+        onInterrupt() {
+          calls += 1;
+          return pending;
+        },
+      }));
+    });
+
+    const stop = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent === "Stop");
+    assert.ok(stop);
+    await act(async () => {
+      stop.click();
+      stop.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    assert.equal(calls, 1);
+    assert.equal(stop.disabled, true);
+    assert.equal(stop.getAttribute("aria-busy"), "true");
+    assert.equal(stop.getAttribute("aria-label"), null);
+    assert.equal(stop.textContent, "Stopping…");
+    assert.match(container.querySelector(".sac-run-status-copy").textContent, /Stopping/);
+    assert.match(container.textContent, /Stopping/);
+    assert.doesNotMatch(container.textContent, /cancelled|interrupted/i);
+    assert.equal(state.turns["turn-1"].status, "running");
+
+    await act(async () => {
+      rejectInterrupt(new Error("provider-interrupt-secret"));
+      await pending.catch(() => undefined);
+    });
+    assert.match(container.textContent, /could not be sent/);
+    assert.doesNotMatch(container.textContent, /provider-interrupt-secret/);
+    assert.equal(state.turns["turn-1"].status, "running");
+
+    const retry = container.querySelector("button.sac-run-status-stop");
+    assert.ok(retry);
+    assert.equal(retry.disabled, false);
+
+    await act(async () => {
+      root.render(createElement(AgentChatShell, {
+        state: runningState("completed", "completed"),
+        threadId,
+        surfaceRegistry: new ReactSurfaceRegistry(),
+        title: "Application copilot",
+        composerAriaLabel: "Message application copilot",
+        onSubmit() {},
+        onResolveInteraction() {},
+        onInterrupt() {},
+      }));
+    });
+    const remainingStop = Boolean(container.querySelector("button.sac-run-status-stop"));
+    assert.equal(remainingStop, false);
+    assert.doesNotMatch(container.textContent, /Stop requested/);
+
+    await act(async () => root.unmount());
+  });
+});
+
+test("a stale interrupt promise cannot settle the request for a newer turn", async () => {
+  await withDom(async ({ document }) => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    let resolveFirst;
+    let resolveSecond;
+    const first = new Promise((resolve) => { resolveFirst = resolve; });
+    const second = new Promise((resolve) => { resolveSecond = resolve; });
+    const calls = [];
+    const stateFor = (turnId) => ({
+      ...emptyState,
+      threads: { [threadId]: { id: threadId, appKey: "test", organizationId: "org", status: "active" } },
+      turns: { [turnId]: { id: turnId, threadId, status: "running", itemIds: [] } },
+    });
+    const renderTurn = async (turnId) => {
+      await act(async () => {
+        root.render(createElement(AgentChatShell, {
+          state: stateFor(turnId),
+          threadId,
+          surfaceRegistry: new ReactSurfaceRegistry(),
+          title: "Application copilot",
+          composerAriaLabel: "Message application copilot",
+          onSubmit() {},
+          onResolveInteraction() {},
+          onInterrupt(turn) {
+            calls.push(turn.id);
+            return turn.id === "turn-1" ? first : second;
+          },
+        }));
+      });
+    };
+
+    await renderTurn("turn-1");
+    await act(async () => {
+      container.querySelector("button.sac-run-status-stop").click();
+      await Promise.resolve();
+    });
+    await renderTurn("turn-2");
+    const secondStop = container.querySelector("button.sac-run-status-stop");
+    assert.equal(secondStop.disabled, false);
+    await act(async () => {
+      secondStop.click();
+      await Promise.resolve();
+    });
+    assert.deepEqual(calls, ["turn-1", "turn-2"]);
+
+    await act(async () => {
+      resolveFirst();
+      await first;
+      await Promise.resolve();
+    });
+    assert.match(container.textContent, /Stopping/);
+    assert.doesNotMatch(container.textContent, /Stop requested/);
+    assert.equal(secondStop.getAttribute("aria-busy"), "true");
+
+    await act(async () => {
+      resolveSecond();
+      await second;
+      await Promise.resolve();
+    });
+    assert.match(container.textContent, /Stop requested/);
+    assert.equal(secondStop.getAttribute("aria-busy"), "false");
+
+    await act(async () => root.unmount());
+  });
+});
+
+test("host busy overlays idle protocol state without inventing an interrupt target", () => {
+  const html = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: emptyState,
+      threadId,
+      busy: true,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+      onInterrupt() {},
+    }),
+  );
+  assert.match(html, /data-sac-run-phase="busy"/);
+  assert.match(html, />Busy</);
+  assert.doesNotMatch(html, />Stop</);
+
+  const completedHtml = renderToStaticMarkup(
+    createElement(AgentChatShell, {
+      state: runningState("completed", "completed"),
+      threadId,
+      busy: true,
+      surfaceRegistry: new ReactSurfaceRegistry(),
+      title: "Application copilot",
+      composerAriaLabel: "Message application copilot",
+      onSubmit() {},
+      onResolveInteraction() {},
+      onInterrupt() {},
+    }),
+  );
+  assert.match(completedHtml, /data-sac-run-phase="busy"/);
+  assert.doesNotMatch(completedHtml, />Stop</);
+});
+
+test("message renderer failures fall back to escaped text without secrets or exception text", async () => {
+  await withDom(async ({ document }) => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const exceptionText = "renderer-exception-secret";
+    const state = {
+      ...emptyState,
+      threads: { [threadId]: { id: threadId, appKey: "test", status: "active" } },
+      turns: {
+        "turn-1": { id: "turn-1", threadId, status: "completed", itemIds: ["message-1", "tool-1", "empty-1"] },
+      },
+      items: {
+        "message-1": {
+          id: "message-1",
+          threadId,
+          turnId: "turn-1",
+          kind: "message",
+          role: "assistant",
+          status: "completed",
+          text: "Visible <script>answer</script>",
+          input: { secret: "message-input-secret" },
+          output: { secret: "message-output-secret" },
+          metadata: { secret: "message-metadata-secret" },
+        },
+        "tool-1": {
+          id: "tool-1",
+          threadId,
+          turnId: "turn-1",
+          kind: "tool",
+          status: "completed",
+          title: "Inspect repo",
+          text: "tool title",
+          input: { secret: "tool-input-secret" },
+          output: { secret: "tool-output-secret" },
+        },
+        "empty-1": {
+          id: "empty-1",
+          threadId,
+          turnId: "turn-1",
+          kind: "message",
+          role: "assistant",
+          status: "completed",
+          text: "   ",
+          metadata: { secret: "empty-metadata-secret" },
+        },
+      },
+    };
+    const renderedKinds = [];
+
+    await act(async () => {
+      root.render(createElement(ChatTimeline, {
+        state,
+        threadId,
+        surfaceRegistry: new ReactSurfaceRegistry(),
+        renderMessage: (item) => {
+          renderedKinds.push(item.kind);
+          throw new Error(exceptionText);
+        },
+      }));
+    });
+
+    assert.deepEqual(renderedKinds, ["message", "message"]);
+    assert.match(container.textContent, /Visible <script>answer<\/script>/);
+    assert.match(container.textContent, /This message could not be displayed/);
+    assert.match(container.innerHTML, /Visible &lt;script&gt;answer&lt;\/script&gt;/);
+    assert.doesNotMatch(container.textContent, new RegExp(exceptionText));
+    assert.doesNotMatch(container.textContent, /message-input-secret/);
+    assert.doesNotMatch(container.textContent, /message-output-secret/);
+    assert.doesNotMatch(container.textContent, /message-metadata-secret/);
+    assert.doesNotMatch(container.textContent, /empty-metadata-secret/);
+    assert.match(container.textContent, /tool title/);
+    assert.match(container.textContent, /tool-output-secret/);
+
+    const recoveredState = {
+      ...state,
+      items: {
+        ...state.items,
+        "message-1": { ...state.items["message-1"], text: "Recovered answer" },
+      },
+    };
+    await act(async () => {
+      root.render(createElement(ChatTimeline, {
+        state: recoveredState,
+        threadId,
+        surfaceRegistry: new ReactSurfaceRegistry(),
+        renderMessage: (item) => createElement("strong", null, item.text),
+      }));
+    });
+    assert.match(container.innerHTML, /<strong>Recovered answer<\/strong>/);
+
+    await act(async () => root.unmount());
+  });
+});
+
+test("message error boundary recovers a descendant renderer after content advances", async () => {
+  await withDom(async ({ document }) => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const originalError = console.error;
+    console.error = () => {};
+    const ThrowingMessage = () => {
+      throw new Error("descendant-renderer-secret");
+    };
+    const base = runningState("running", "streaming");
+
+    try {
+      await act(async () => {
+        root.render(createElement(ChatTimeline, {
+          state: base,
+          threadId,
+          surfaceRegistry: new ReactSurfaceRegistry(),
+          renderMessage: () => createElement(ThrowingMessage),
+        }));
+      });
+      assert.match(container.textContent, /Working on the next step/);
+      assert.doesNotMatch(container.textContent, /descendant-renderer-secret/);
+
+      const advanced = {
+        ...base,
+        items: {
+          ...base.items,
+          "message-1": {
+            ...base.items["message-1"],
+            status: "completed",
+            text: "Recovered streamed answer",
+          },
+        },
+      };
+      await act(async () => {
+        root.render(createElement(ChatTimeline, {
+          state: advanced,
+          threadId,
+          surfaceRegistry: new ReactSurfaceRegistry(),
+          renderMessage: (item) => createElement("strong", null, item.text),
+        }));
+      });
+      assert.match(container.innerHTML, /<strong>Recovered streamed answer<\/strong>/);
+    } finally {
+      console.error = originalError;
+      await act(async () => root.unmount());
+    }
+  });
+});
+
+test("composer fences double submit, restores rejected drafts, and keeps editing while busy", async () => {
+  await withDom(async ({ document, window }) => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const drafts = [];
+    let calls = 0;
+    let rejectSubmit;
+    const pending = new Promise((_, reject) => {
+      rejectSubmit = reject;
+    });
+
+    await act(async () => {
+      root.render(createElement(ChatComposer, {
+        ariaLabel: "Message application copilot",
+        initialValue: "first instruction",
+        onDraftChange: (value) => drafts.push(value),
+        actions: createElement("button", { "data-action": "insert" }, "Insert note"),
+        onSubmit() {
+          calls += 1;
+          return pending;
+        },
+      }));
+    });
+
+    const textarea = container.querySelector("textarea");
+    const form = container.querySelector("form");
+    const send = container.querySelector("button.sac-button-primary");
+    assert.ok(textarea);
+    assert.ok(form);
+    assert.equal(textarea.disabled, false);
+    assert.equal(textarea.value, "first instruction");
+    assert.equal(send.disabled, false);
+
+    const action = container.querySelector("[data-action=insert]");
+    await act(async () => action.click());
+    assert.equal(calls, 0);
+    assert.equal(textarea.value, "first instruction");
+
+    await act(async () => {
+      send.click();
+      send.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    assert.equal(calls, 1);
+    assert.equal(form.getAttribute("aria-busy"), "true");
+    assert.match(send.textContent, /Working/);
+    assert.equal(textarea.disabled, false);
+    assert.equal(textarea.value, "");
+
+    await act(async () => action.click());
+    assert.equal(calls, 1);
+
+    await act(async () => {
+      rejectSubmit(new Error("submit-secret-error"));
+      await pending.catch(() => undefined);
+    });
+    assert.equal(textarea.value, "first instruction");
+    assert.doesNotMatch(container.textContent, /submit-secret-error/);
+    assert.equal(form.getAttribute("aria-busy"), null);
+    assert.deepEqual(drafts.at(-1), "first instruction");
+
+    await act(async () => root.unmount());
+  });
+});
+
+test("composer restores a rejected snapshot only when the operator has not typed a replacement", async () => {
+  await withDom(async ({ document, window }) => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    let rejectSubmit;
+    const pending = new Promise((_, reject) => {
+      rejectSubmit = reject;
+    });
+
+    await act(async () => {
+      root.render(createElement(ChatComposer, {
+        ariaLabel: "Message application copilot",
+        initialValue: "original",
+        onSubmit() {
+          return pending;
+        },
+      }));
+    });
+
+    await act(async () => container.querySelector("button.sac-button-primary").click());
+    const textarea = container.querySelector("textarea");
+    await act(async () => setTextareaValue(window, textarea, "replacement draft"));
+    await act(async () => {
+      rejectSubmit(new Error("hidden-rejection"));
+      await pending.catch(() => undefined);
+    });
+    assert.equal(textarea.value, "replacement draft");
+    assert.doesNotMatch(container.textContent, /hidden-rejection/);
+
+    await act(async () => root.unmount());
+  });
+});
+
+test("composer catches synchronous submit throws and preserves IME enter", async () => {
+  await withDom(async ({ document, window }) => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    let calls = 0;
+
+    await act(async () => {
+      root.render(createElement(ChatComposer, {
+        ariaLabel: "Message application copilot",
+        initialValue: "send me",
+        onSubmit() {
+          calls += 1;
+          throw new Error("sync-submit-secret");
+        },
+      }));
+    });
+
+    const textarea = container.querySelector("textarea");
+    const send = container.querySelector("button.sac-button-primary");
+    await act(async () => {
+      const composing = new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+      Object.defineProperty(composing, "keyCode", { get: () => 229 });
+      Object.defineProperty(composing, "isComposing", { get: () => true });
+      textarea.dispatchEvent(composing);
+    });
+    assert.equal(calls, 0);
+    assert.equal(textarea.value, "send me");
+
+    await act(async () => {
+      textarea.dispatchEvent(new window.KeyboardEvent("keydown", {
+        key: "Enter",
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+    });
+    assert.equal(calls, 0);
+
+    await act(async () => {
+      send.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    assert.equal(calls, 1);
+    assert.equal(textarea.value, "send me");
+    assert.doesNotMatch(container.textContent, /sync-submit-secret/);
+
+    await act(async () => root.unmount());
+  });
+});
+
+test("composer submits exactly once on a normal Enter key", async () => {
+  await withDom(async ({ document }) => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const submitted = [];
+    await act(async () => {
+      root.render(createElement(ChatComposer, {
+        ariaLabel: "Message application copilot",
+        initialValue: "send with enter",
+        onSubmit(value) {
+          submitted.push(value);
+        },
+      }));
+    });
+
+    const textarea = container.querySelector("textarea");
+    const propsKey = Object.keys(textarea).find((key) => key.startsWith("__reactProps$"));
+    const onKeyDown = propsKey ? textarea[propsKey]?.onKeyDown : undefined;
+    assert.equal(typeof onKeyDown, "function");
+    let prevented = false;
+    await act(async () => {
+      onKeyDown({
+        key: "Enter",
+        shiftKey: false,
+        nativeEvent: { isComposing: false, keyCode: 13 },
+        isDefaultPrevented: () => false,
+        preventDefault() { prevented = true; },
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    assert.equal(prevented, true);
+    assert.deepEqual(submitted, ["send with enter"]);
+    assert.equal(textarea.value, "");
+
+    await act(async () => root.unmount());
+  });
+});
+
+test("composer busy disables send but not the textarea; disabled still blocks editing", () => {
+  const busy = renderToStaticMarkup(
+    createElement(ChatComposer, {
+      ariaLabel: "Message application copilot",
+      busy: true,
+      initialValue: "next instruction",
+      onSubmit() {},
+    }),
+  );
+  assert.match(busy, /aria-busy="true"/);
+  assert.match(busy, />Working…</);
+  assert.match(busy, /disabled=""/);
+  assert.doesNotMatch(busy, /<textarea[^>]*disabled/);
+
+  const blocked = renderToStaticMarkup(
+    createElement(ChatComposer, {
+      ariaLabel: "Message application copilot",
+      disabled: true,
+      initialValue: "locked",
+      onSubmit() {},
+    }),
+  );
+  assert.match(blocked, /<textarea[^>]*disabled/);
+});
+
+test("run phase copy formatters receive only a documented primitive", () => {
+  const received = [];
+  const html = renderToStaticMarkup(
+    createElement(ChatRunStatus, {
+      runState: { phase: "queued", turn: { id: "turn-1", threadId, status: "queued", itemIds: [] } },
+      copy: {
+        runPhaseLabel: (phase) => {
+          received.push(phase);
+          return `fase ${phase}`;
+        },
+      },
+    }),
+  );
+  assert.match(html, /fase queued/);
+  assert.deepEqual(received, ["queued"]);
+  for (const value of received) assert.equal(typeof value, "string");
+
+  const throwing = resolveAgentChatCopy({
+    runPhaseLabel() {
+      throw new Error("phase-secret");
+    },
+  });
+  assert.equal(throwing.runPhaseLabel("busy"), "Busy");
 });

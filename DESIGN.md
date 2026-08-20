@@ -38,7 +38,9 @@ Legacy `--sac-*` color variables remain aliases during migration. New component 
 - Translate display labels, hints, statuses and ARIA text through one shared copy contract (`AgentChatCopy` / `copy` on the React components). Display-only: decision identifiers passed to `onResolve` stay the original protocol values.
 - Preserve decision identifiers exactly when resolving interactions. A translated label never changes the value sent to `onResolve`.
 - Keep failure messages actionable and safe. Never interpolate raw unknown payloads or exception strings into the UI.
-- Use verbs that describe the action: Send, Confirm, Back, Retry. Avoid anthropomorphic filler and celebratory copy.
+- Use verbs that describe the action: Send, Confirm, Back, Retry, Stop. Avoid anthropomorphic filler and celebratory copy.
+- A stop request is not a completed interrupt. Show Stop requested until a protocol event confirms cancelled or interrupted.
+- Application message renderers fail closed to escaped item text, never to exception text or raw metadata.
 
 ## Interaction and accessibility
 
@@ -46,6 +48,7 @@ Legacy `--sac-*` color variables remain aliases during migration. New component 
 - Preserve visible keyboard focus, IME-safe composition, coarse-pointer targets and reduced-motion behavior.
 - Streaming transcript updates remain `aria-live="off"`; required human actions use explicit landmarks and labels.
 - Confirmation remains a separate step for approval interactions.
+- Keep Stop separate from Send. Show Stop only when an active turn and an interrupt handler both exist.
 - Theme and copy overrides must work for standalone exported components as well as `AgentChatShell`.
 
 ## Anti-patterns

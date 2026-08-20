@@ -1,3 +1,5 @@
+import type { ThreadRunPhase } from "simplia-agent-chat/core";
+
 export type AgentChatTheme = "dark" | "light";
 
 export interface AgentChatCopy {
@@ -34,6 +36,13 @@ export interface AgentChatCopy {
   readonly surfaceFallbackAriaLabel: (kind: string, schemaVersion: number, title: string | undefined) => string;
   readonly surfaceStatusLabel: (status: string) => string;
   readonly surfaceKindLabel: (kind: string) => string;
+  readonly runPhaseLabel: (phase: ThreadRunPhase) => string;
+  readonly interruptLabel: string;
+  readonly interruptBusyLabel: string;
+  readonly interruptRequestedLabel: string;
+  readonly interruptError: string;
+  readonly interruptDescription: string;
+  readonly messageRendererFallback: string;
 }
 
 export type AgentChatCopyOverrides = Partial<AgentChatCopy>;
@@ -59,6 +68,18 @@ const defaultSurfaceFallbackAriaLabel = (
   return trustedTitle ? `${trustedTitle} (${kind} v${schemaVersion})` : `${kind} v${schemaVersion}`;
 };
 const identityKind = (kind: string) => kind;
+const RUN_PHASE_LABELS: Record<ThreadRunPhase, string> = {
+  idle: "Idle",
+  queued: "Queued",
+  busy: "Busy",
+  streaming: "Streaming",
+  waiting: "Waiting",
+  completed: "Completed",
+  failed: "Failed",
+  interrupted: "Interrupted",
+  cancelled: "Cancelled",
+};
+const defaultRunPhaseLabel = (phase: ThreadRunPhase) => RUN_PHASE_LABELS[phase];
 
 export const defaultAgentChatCopy: AgentChatCopy = Object.freeze({
   jumpToLive: "Return to live",
@@ -94,6 +115,13 @@ export const defaultAgentChatCopy: AgentChatCopy = Object.freeze({
   surfaceFallbackAriaLabel: defaultSurfaceFallbackAriaLabel,
   surfaceStatusLabel: identityStatus,
   surfaceKindLabel: identityKind,
+  runPhaseLabel: defaultRunPhaseLabel,
+  interruptLabel: "Stop",
+  interruptBusyLabel: "Stopping…",
+  interruptRequestedLabel: "Stop requested",
+  interruptError: "The stop request could not be sent. Try again.",
+  interruptDescription: "Requests that the provider stop the current turn.",
+  messageRendererFallback: "This message could not be displayed.",
 });
 
 const resolvedCopies = new WeakSet<object>();

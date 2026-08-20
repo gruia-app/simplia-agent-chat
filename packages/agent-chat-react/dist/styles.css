@@ -323,15 +323,30 @@
   line-height: 1.2;
 }
 
+.sac-status-busy,
 .sac-status-streaming,
 .sac-status-running,
 .sac-status-ready { border-color: color-mix(in srgb, var(--sac-color-accent) 45%, var(--sac-color-border)); color: var(--sac-color-accent-fg); }
 .sac-status-completed { border-color: color-mix(in srgb, var(--sac-color-success) 45%, var(--sac-color-border)); color: var(--sac-color-success-fg); }
 .sac-status-action_required,
+.sac-status-waiting,
 .sac-status-waiting_approval,
 .sac-status-waiting_input { border-color: color-mix(in srgb, var(--sac-color-warning) 45%, var(--sac-color-border)); color: var(--sac-color-warning-fg); }
+.sac-status-queued,
+.sac-status-pending {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--sac-color-accent) 45%, var(--sac-color-border));
+  color: var(--sac-color-accent-fg);
+}
+.sac-status-waiting { border-style: dashed; }
 .sac-status-failed,
 .sac-status-declined { border-color: color-mix(in srgb, var(--sac-color-danger) 45%, var(--sac-color-border)); color: var(--sac-color-danger-fg); }
+.sac-status-interrupted,
+.sac-status-cancelled {
+  border-style: dotted;
+  border-color: var(--sac-color-border-strong);
+  color: var(--sac-color-text-muted);
+}
 
 .sac-surface,
 .sac-surface-fallback {
@@ -490,6 +505,47 @@
   font-size: 0.6rem;
 }
 
+.sac-composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.sac-run-status {
+  width: min(100%, 52rem);
+  margin: 0 auto 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.sac-run-status-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.sac-run-status-kind {
+  color: var(--sac-color-text-muted);
+  font-family: var(--sac-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sac-run-status-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--sac-color-danger-fg);
+  font-size: 0.72rem;
+}
+
 .sac-button {
   min-height: 2rem;
   border: 1px solid var(--sac-color-border-strong);
@@ -569,7 +625,8 @@
 @media (pointer: coarse) {
   .sac-button,
   .sac-jump-button,
-  .sac-work-detail summary {
+  .sac-work-detail summary,
+  .sac-run-status-stop {
     min-height: 2.75rem;
   }
 }

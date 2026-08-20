@@ -2,6 +2,9 @@ import { validateChatEvent, } from "./protocol.js";
 const MAX_SEEN_EVENT_IDS = 50_000;
 const MAX_WARNINGS = 1_000;
 const TERMINAL_TURN_STATUSES = new Set(["completed", "failed", "interrupted", "cancelled"]);
+export function isTerminalTurnStatus(status) {
+    return TERMINAL_TURN_STATUSES.has(status);
+}
 export function createInitialChatState() {
     return {
         threads: {},
@@ -179,7 +182,7 @@ function applyEvent(state, event) {
         case "turn.upsert": {
             const incoming = event.payload;
             const existing = state.turns[incoming.id];
-            if (existing && TERMINAL_TURN_STATUSES.has(existing.status) && incoming.status !== existing.status) {
+            if (existing && isTerminalTurnStatus(existing.status) && incoming.status !== existing.status) {
                 return { applied: false, state, reason: "invalid_turn_transition" };
             }
             const orphanIds = Object.values(state.items)
@@ -203,7 +206,7 @@ function applyEvent(state, event) {
                 itemIds: [],
                 status: event.payload.status,
             };
-            if (TERMINAL_TURN_STATUSES.has(current.status) && current.status !== event.payload.status) {
+            if (isTerminalTurnStatus(current.status) && current.status !== event.payload.status) {
                 return { applied: false, state, reason: "invalid_turn_transition" };
             }
             const next = { ...current, ...event.payload };
@@ -402,6 +405,70 @@ export function selectTurnItems(state, turnId) {
 }
 export function selectPendingInteraction(state, threadId) {
     return Object.values(state.interactions).find((interaction) => interaction.threadId === threadId && interaction.status === "pending");
+}
+export function selectActiveTurn(state, threadId) {
+    const turns = selectThreadTurns(state, threadId);
+    for (let index = turns.length - 1; index >= 0; index -= 1) {
+        const turn = turns[index];
+        if (turn && !isTerminalTurnStatus(turn.status))
+            return turn;
+    }
+    return undefined;
+}
+function resolveWaitingKind(turn, pending) {
+    if (pending)
+        return pending.kind === "approval" ? "approval" : "input";
+    if (turn?.status === "waiting_approval")
+        return "approval";
+    if (turn?.status === "waiting_input")
+        return "input";
+    return undefined;
+}
+function threadRunState(phase, parts = {}) {
+    return {
+        phase,
+        ...(parts.turn ? { turn: parts.turn } : {}),
+        ...(parts.pendingInteraction ? { pendingInteraction: parts.pendingInteraction } : {}),
+        ...(parts.streaming ? { streaming: true } : {}),
+        ...(parts.waitingKind ? { waitingKind: parts.waitingKind } : {}),
+    };
+}
+export function selectThreadRunState(state, threadId) {
+    const pendingInteraction = selectPendingInteraction(state, threadId);
+    const activeTurn = selectActiveTurn(state, threadId);
+    const turns = selectThreadTurns(state, threadId);
+    const latestTurn = turns[turns.length - 1];
+    const waitingTurn = activeTurn?.status === "waiting_approval" || activeTurn?.status === "waiting_input"
+        ? activeTurn
+        : undefined;
+    if (pendingInteraction || waitingTurn) {
+        const turn = waitingTurn ?? activeTurn ?? (pendingInteraction ? state.turns[pendingInteraction.turnId] : undefined) ?? latestTurn;
+        const waitingKind = resolveWaitingKind(waitingTurn ?? turn, pendingInteraction);
+        return threadRunState("waiting", {
+            ...(turn ? { turn } : {}),
+            ...(pendingInteraction ? { pendingInteraction } : {}),
+            ...(waitingKind ? { waitingKind } : {}),
+        });
+    }
+    if (activeTurn?.status === "queued") {
+        return threadRunState("queued", { turn: activeTurn });
+    }
+    if (activeTurn?.status === "running") {
+        const streaming = selectTurnItems(state, activeTurn.id).some((item) => item.status === "streaming");
+        return streaming
+            ? threadRunState("streaming", { turn: activeTurn, streaming: true })
+            : threadRunState("busy", { turn: activeTurn });
+    }
+    if (latestTurn) {
+        const status = latestTurn.status;
+        if (status === "completed" || status === "failed" || status === "interrupted" || status === "cancelled") {
+            return threadRunState(status, { turn: latestTurn });
+        }
+    }
+    if (turns.length === 0 && state.threads[threadId]?.status === "error") {
+        return threadRunState("failed");
+    }
+    return threadRunState("idle");
 }
 function resolveSurfacePlacement(block) {
     const preferred = block.presentation?.preferredSurface;

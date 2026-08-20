@@ -176,3 +176,25 @@ test("motion, coarse-pointer and artifact-stage contracts remain present", () =>
   assert.match(css, /\.sac-workspace-with-stage/);
   assert.doesNotMatch(css, /@media[^{]+\{[^}]*sac-workspace-with-stage/);
 });
+
+test("run status, composer actions and queued/pending/interrupted/cancelled states are semantic", () => {
+  assert.match(css, /\.sac-run-status\b/);
+  assert.match(css, /\.sac-run-status-stop\b/);
+  assert.match(css, /\.sac-run-status-error\b/);
+  assert.match(css, /\.sac-composer-actions\b/);
+  assert.match(css, /\.sac-status-busy\b/);
+  assert.match(css, /\.sac-status-queued\b/);
+  assert.match(css, /\.sac-status-pending\b/);
+  assert.match(css, /\.sac-status-waiting\b/);
+  assert.match(css, /\.sac-status-interrupted\b/);
+  assert.match(css, /\.sac-status-cancelled\b/);
+  const queued = css.slice(css.indexOf(".sac-status-queued"), css.indexOf("}", css.indexOf(".sac-status-queued")) + 1);
+  const interrupted = css.slice(css.indexOf(".sac-status-interrupted"), css.indexOf("}", css.indexOf(".sac-status-interrupted")) + 1);
+  assert.match(queued, /border-style:\s*dashed/);
+  assert.match(queued, /var\(--sac-color-accent\)/);
+  assert.doesNotMatch(queued, /warning/);
+  assert.match(interrupted, /border-style:\s*dotted/);
+  assert.match(interrupted, /var\(--sac-color-text-muted\)/);
+  assert.doesNotMatch(interrupted, /danger/);
+  assert.doesNotMatch(css, /Codex|OpenAI|OpenRouter|LangChain/i);
+});

@@ -72,6 +72,18 @@ export function ChatLab() {
           updateState((current) => appendFixtureUserMessage(current, fixture.threadId, message));
           setLastAction(`Queued local fixture message for ${fixture.label}`);
         }}
+        onInterrupt={(turn) => {
+          setLastAction(`Stop requested for ${turn.id}`);
+        }}
+        composerActions={
+          <button
+            className="sac-button"
+            type="button"
+            onClick={() => setLastAction(`Composer action on ${fixture.label}`)}
+          >
+            Insert note
+          </button>
+        }
         onResolveInteraction={resolveInteraction}
         onSurfaceAction={(block, action) => {
           setLastAction(`${block.kind}: ${action.action}`);

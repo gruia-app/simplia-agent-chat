@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { createInitialChatState, reduceChatEvent } from "simplia-agent-chat/core/state";
+import {
+  createInitialChatState,
+  isTerminalTurnStatus,
+  reduceChatEvent,
+  selectActiveTurn,
+  selectThreadRunState,
+} from "simplia-agent-chat/core/state";
 import {
   beginSurfaceAction,
   createSurfaceActionState,
@@ -14,7 +20,10 @@ import {
 } from "simplia-agent-chat/adapters/acv2";
 import {
   AgentChatShell,
+  beginInterruptRequest,
   ChatComposer,
+  ChatRunStatus,
+  createInterruptRequestState,
   ReactSurfaceRegistry,
   SurfaceHost,
   useSurfaceAction,
@@ -23,6 +32,12 @@ import {
 assert.equal(typeof beginSurfaceAction, "function");
 assert.equal(typeof createSurfaceActionState, "function");
 assert.equal(typeof useSurfaceAction, "function");
+assert.equal(typeof isTerminalTurnStatus, "function");
+assert.equal(typeof selectActiveTurn, "function");
+assert.equal(typeof selectThreadRunState, "function");
+assert.equal(typeof ChatRunStatus, "function");
+assert.equal(createInterruptRequestState().status, "idle");
+assert.equal(beginInterruptRequest(createInterruptRequestState(), "turn-1").accepted, true);
 
 const surfaceAction = beginSurfaceAction(createSurfaceActionState(), {
   idempotencyKey: "consumer-action-key",
@@ -65,9 +80,12 @@ const registry = new ReactSurfaceRegistry();
 assert.deepEqual(registry.kinds(), []);
 const composerHtml = renderToStaticMarkup(createElement(ChatComposer, {
   ariaLabel: "External consumer composer",
+  actions: createElement("button", { type: "button" }, "Insert note"),
   onSubmit: () => undefined,
 }));
 assert.match(composerHtml, /External consumer composer/);
+assert.match(composerHtml, /sac-composer-actions/);
+assert.match(composerHtml, /Insert note/);
 
 const shellHtml = renderToStaticMarkup(createElement(AgentChatShell, {
   state,
