@@ -25,6 +25,51 @@ for (const event of codexAppServerAdapter.normalize(notification, context)) {
 
 When replay cannot close a stream gap, send a `thread.snapshot` that includes `stream.id` and `stream.sequence` set to the recovered high-water mark. A recovery snapshot MUST carry that stream metadata; without it the snapshot cannot adopt the stream cursor or clear the resync request.
 
+Direct reducer use remains supported. Applications that want in-process subscribers or a caller-owned journal can opt into `ChatRuntime` and `ChatPersistencePort` without changing event types.
+
+```ts
+import { createChatRuntime } from "simplia-agent-chat/core/runtime";
+import {
+  commitChatEvent,
+  createThreadSnapshotEvent,
+  hydrateChatRuntime,
+} from "simplia-agent-chat/core/persistence";
+
+const hydrated = await hydrateChatRuntime(persistence, {
+  threadId,
+  streamId,
+  limit: 256,
+});
+if (!hydrated.ok) throw new Error(hydrated.reason);
+const runtime = hydrated.runtime;
+const unsubscribe = runtime.subscribe(() => render(runtime.getState()));
+
+const committed = await commitChatEvent(runtime, persistence, event, { signal });
+if (!committed.ok) {
+  // validation, abort, or append failed: runtime and subscribers were not touched
+  return;
+}
+// append already succeeded. duplicate/gap/conflict stay persisted; do not roll back.
+
+const snapshot = createThreadSnapshotEvent({
+  state: runtime.getState(),
+  threadId,
+  id: snapshotEventId,
+  source: "app",
+  occurredAt,
+  streamId,
+});
+if (snapshot.ok) await persistence.saveSnapshot?.(snapshot.event);
+```
+
+Ordering and failure boundaries:
+
+- `commitChatEvent` validates, then appends, then applies. Concurrent commits on the same runtime run in call order. A rejected queue item does not poison later commits.
+- A rejected append leaves runtime state untouched and means persistence was not confirmed. Snapshot or journal read exceptions return `load_failed` without exposing a partially hydrated runtime.
+- Journal pages use an opaque `cursor`, not a sequence. Pass snapshot envelope `{ stream.id, stream.sequence }` as `after` when hydrating a tail. When `done` is false, empty pages, missing cursors, and repeated cursors fail closed.
+- One durable stream per thread is the supported production shape. Unsequenced events may still reduce, but they are unsafe as durable records.
+- `createMemoryChatPersistence` is volatile and for tests or local labs only. Application storage remains consumer-owned.
+
 Adapter-produced turn, item, surface and interaction IDs are scoped by thread. Preserve native provider IDs from `provider.nativeTurnId` / `provider.nativeThreadId` or item metadata instead of parsing the scoped identifier.
 
 ## Connect the React shell

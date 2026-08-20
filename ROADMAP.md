@@ -3,7 +3,7 @@
 ## Before 1.0
 
 - Virtualized or paged timeline contract for very long sessions.
-- Stable snapshot and replay persistence interface.
+- Stable snapshot and replay persistence interface. Completed as additive `ChatRuntime` plus a caller-owned `ChatPersistencePort` (`commitChatEvent`, `hydrateChatRuntime`, `thread.snapshot` wire format). Application storage remains consumer-owned.
 - Framework-neutral rendering examples beyond React.
 - Surface schema conformance kit and reusable test helpers.
 - Provider conformance suites for live Codex, LangChain and OpenAI-compatible transports.
