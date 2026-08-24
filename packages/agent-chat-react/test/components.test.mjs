@@ -19,6 +19,7 @@ import {
   failInterruptRequest,
   isAffirmativeDecision,
   PendingInteractions,
+  ProviderAccountPicker,
   ReactSurfaceRegistry,
   reconcileInterruptRequest,
   resetInterruptRequest,
@@ -105,6 +106,49 @@ test("shell exposes generic context rail and application-specific empty copy", (
   assert.match(html, /class="sac-context-rail"/);
   assert.match(html, /aria-label="Context actions"/);
   assert.match(html, /Ask about this application\./);
+});
+
+test("provider account picker exposes account and model selection without credential payloads", () => {
+  const html = renderToStaticMarkup(
+    createElement(ProviderAccountPicker, {
+      providers: [{
+        id: "codex_cli",
+        displayName: "Codex",
+        modes: ["agent"],
+        authMethods: ["chatgpt_device", "api_key"],
+      }],
+      connections: [{
+        id: "account-1",
+        providerId: "codex_cli",
+        label: "Roberto",
+        scope: "personal",
+        status: "connected",
+        authMethod: "chatgpt_device",
+        identity: { email: "operator@example.com" },
+      }],
+      models: [{
+        id: "gpt-5.6-sol",
+        displayName: "GPT-5.6 Sol",
+        providerId: "codex_cli",
+        isDefault: true,
+      }],
+      selectedConnectionId: "account-1",
+      selectedModelId: "gpt-5.6-sol",
+      accountLabel: "Provider account",
+      modelLabel: "Model",
+      connectLabel: "Connect provider",
+      credentialCanary: "must-not-render",
+      onSelectionChange() {},
+      onConnect() {},
+    }),
+  );
+
+  assert.match(html, /Provider account/);
+  assert.match(html, /Roberto/);
+  assert.match(html, /operator@example.com/);
+  assert.match(html, /GPT-5.6 Sol/);
+  assert.match(html, /Connect provider/);
+  assert.doesNotMatch(html, /must-not-render/);
 });
 
 test("shell accepts an application composer and message renderer without forking the timeline", () => {

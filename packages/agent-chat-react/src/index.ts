@@ -20,6 +20,7 @@ export * from "./ChatRunStatus.js";
 export * from "./ChatTimeline.js";
 export * from "./interrupt.js";
 export * from "./PendingInteractions.js";
+export * from "./ProviderAccountPicker.js";
 export * from "./surface-registry.js";
 export * from "./use-follow-scroll.js";
 export * from "./use-surface-action.js";
