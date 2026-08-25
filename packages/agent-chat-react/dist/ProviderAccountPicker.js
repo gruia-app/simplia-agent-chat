@@ -9,16 +9,18 @@ function connectionOptionLabel(connection) {
 export function ProviderAccountPicker({ providers, connections, models, selectedConnectionId, selectedModelId, selectedReasoningEffort, selectedVerbosity, accountLabel = "Provider account", modelLabel = "Model", reasoningEffortLabel = "Reasoning effort", verbosityLabel = "Verbosity", providerDefaultLabel = "Provider default", connectLabel = "Connect provider", unavailableLabel = "Reconnect required", disabled = false, onSelectionChange, onConnect, }) {
     const accountId = useId();
     const modelId = useId();
-    const selectedConnection = connections.find((connection) => connection.id === selectedConnectionId);
+    const connected = connections.filter((connection) => connection.status !== "disabled");
+    const selectedConnection = connected.find((connection) => connection.id === selectedConnectionId) ?? connected.find((connection) => connection.isDefault) ?? connected[0];
     const availableModels = selectedConnection
         ? models.filter((model) => model.providerId === selectedConnection.providerId)
         : [];
-    const selectedModel = availableModels.find((model) => model.id === selectedModelId);
+    const selectedModel = availableModels.find((model) => model.id === selectedModelId)
+        ?? availableModels.find((model) => model.isDefault)
+        ?? availableModels[0];
     const selectedProvider = selectedConnection
         ? providers.find((provider) => provider.id === selectedConnection.providerId)
         : undefined;
-    const connected = connections.filter((connection) => connection.status !== "disabled");
-    return (_jsxs("div", { className: "sac-provider-picker", "data-sac-provider-picker": "true", children: [_jsxs("div", { className: "sac-provider-field", children: [_jsx("label", { htmlFor: accountId, children: accountLabel }), _jsxs("select", { id: accountId, value: selectedConnectionId ?? "", disabled: disabled || connected.length === 0, onChange: (event) => {
+    return (_jsxs("div", { className: "sac-provider-picker", "data-sac-provider-picker": "true", children: [_jsxs("div", { className: "sac-provider-field", children: [_jsx("label", { htmlFor: accountId, children: accountLabel }), _jsxs("select", { id: accountId, value: selectedConnection?.id ?? "", disabled: disabled || connected.length === 0, onChange: (event) => {
                             const connection = connections.find((candidate) => candidate.id === event.target.value);
                             if (!connection)
                                 return;
@@ -28,7 +30,7 @@ export function ProviderAccountPicker({ providers, connections, models, selected
                                 providerId: connection.providerId,
                                 ...(defaultModel ? { modelId: defaultModel.id } : {}),
                             });
-                        }, children: [connected.length === 0 ? _jsx("option", { value: "", children: unavailableLabel }) : null, connected.map((connection) => (_jsx("option", { value: connection.id, children: connectionOptionLabel(connection) }, connection.id)))] }), selectedConnection && selectedConnection.status !== "connected" ? (_jsx("span", { className: "sac-provider-status", role: "status", children: selectedConnection.statusReason || unavailableLabel })) : null] }), _jsxs("div", { className: "sac-provider-field", children: [_jsx("label", { htmlFor: modelId, children: modelLabel }), _jsx("select", { id: modelId, value: selectedModelId ?? "", disabled: disabled || !selectedConnection || availableModels.length === 0, onChange: (event) => {
+                        }, children: [connected.length === 0 ? _jsx("option", { value: "", children: unavailableLabel }) : null, connected.map((connection) => (_jsx("option", { value: connection.id, children: connectionOptionLabel(connection) }, connection.id)))] }), selectedConnection && selectedConnection.status !== "connected" ? (_jsx("span", { className: "sac-provider-status", role: "status", children: selectedConnection.statusReason || unavailableLabel })) : null] }), _jsxs("div", { className: "sac-provider-field", children: [_jsx("label", { htmlFor: modelId, children: modelLabel }), _jsx("select", { id: modelId, value: selectedModel?.id ?? "", disabled: disabled || !selectedConnection || availableModels.length === 0, onChange: (event) => {
                             if (!selectedConnection)
                                 return;
                             onSelectionChange({

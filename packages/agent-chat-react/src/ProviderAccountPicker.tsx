@@ -61,15 +61,19 @@ export function ProviderAccountPicker({
 }: ProviderAccountPickerProps) {
   const accountId = useId();
   const modelId = useId();
-  const selectedConnection = connections.find((connection) => connection.id === selectedConnectionId);
+  const connected = connections.filter((connection) => connection.status !== "disabled");
+  const selectedConnection = connected.find(
+    (connection) => connection.id === selectedConnectionId,
+  ) ?? connected.find((connection) => connection.isDefault) ?? connected[0];
   const availableModels = selectedConnection
     ? models.filter((model) => model.providerId === selectedConnection.providerId)
     : [];
-  const selectedModel = availableModels.find((model) => model.id === selectedModelId);
+  const selectedModel = availableModels.find((model) => model.id === selectedModelId)
+    ?? availableModels.find((model) => model.isDefault)
+    ?? availableModels[0];
   const selectedProvider = selectedConnection
     ? providers.find((provider) => provider.id === selectedConnection.providerId)
     : undefined;
-  const connected = connections.filter((connection) => connection.status !== "disabled");
 
   return (
     <div className="sac-provider-picker" data-sac-provider-picker="true">
@@ -77,7 +81,7 @@ export function ProviderAccountPicker({
         <label htmlFor={accountId}>{accountLabel}</label>
         <select
           id={accountId}
-          value={selectedConnectionId ?? ""}
+          value={selectedConnection?.id ?? ""}
           disabled={disabled || connected.length === 0}
           onChange={(event) => {
             const connection = connections.find((candidate) => candidate.id === event.target.value);
@@ -110,7 +114,7 @@ export function ProviderAccountPicker({
         <label htmlFor={modelId}>{modelLabel}</label>
         <select
           id={modelId}
-          value={selectedModelId ?? ""}
+          value={selectedModel?.id ?? ""}
           disabled={disabled || !selectedConnection || availableModels.length === 0}
           onChange={(event) => {
             if (!selectedConnection) return;

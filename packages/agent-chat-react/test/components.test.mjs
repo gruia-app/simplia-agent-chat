@@ -161,6 +161,41 @@ test("provider account picker exposes account and model selection without creden
   assert.doesNotMatch(html, /must-not-render/);
 });
 
+test("provider account picker exposes default model controls before a thread selection exists", () => {
+  const html = renderToStaticMarkup(
+    createElement(ProviderAccountPicker, {
+      providers: [{
+        id: "codex_cli",
+        displayName: "Codex",
+        modes: ["agent"],
+        authMethods: ["chatgpt_device"],
+      }],
+      connections: [{
+        id: "account-default",
+        providerId: "codex_cli",
+        label: "Default account",
+        scope: "personal",
+        status: "connected",
+        authMethod: "chatgpt_device",
+        isDefault: true,
+      }],
+      models: [{
+        id: "gpt-5.6-sol",
+        displayName: "GPT-5.6 Sol",
+        providerId: "codex_cli",
+        reasoningEfforts: ["low", "high"],
+        isDefault: true,
+      }],
+      onSelectionChange() {},
+      onConnect() {},
+    }),
+  );
+
+  assert.match(html, /value="account-default" selected/);
+  assert.match(html, /Reasoning effort/);
+  assert.match(html, /value="high"/);
+});
+
 test("shell accepts an application composer and message renderer without forking the timeline", () => {
   const state = {
     ...emptyState,
