@@ -66,7 +66,10 @@ export function ProviderAccountPicker({
     (connection) => connection.id === selectedConnectionId,
   ) ?? connected.find((connection) => connection.isDefault) ?? connected[0];
   const availableModels = selectedConnection
-    ? models.filter((model) => model.providerId === selectedConnection.providerId)
+    ? models.filter((model) => (
+      model.providerId === selectedConnection.providerId
+      && (!model.connectionId || model.connectionId === selectedConnection.id)
+    ))
     : [];
   const selectedModel = availableModels.find((model) => model.id === selectedModelId)
     ?? availableModels.find((model) => model.isDefault)
@@ -87,8 +90,13 @@ export function ProviderAccountPicker({
             const connection = connections.find((candidate) => candidate.id === event.target.value);
             if (!connection) return;
             const defaultModel = models.find(
-              (model) => model.providerId === connection.providerId && model.isDefault,
-            ) ?? models.find((model) => model.providerId === connection.providerId);
+              (model) => model.providerId === connection.providerId
+                && (!model.connectionId || model.connectionId === connection.id)
+                && model.isDefault,
+            ) ?? models.find((model) => (
+              model.providerId === connection.providerId
+              && (!model.connectionId || model.connectionId === connection.id)
+            ));
             onSelectionChange({
               connectionId: connection.id,
               providerId: connection.providerId,

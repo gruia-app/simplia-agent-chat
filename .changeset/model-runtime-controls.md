@@ -7,3 +7,4 @@
 Expose controlled reasoning-effort and verbosity selectors for provider models
 that declare those capabilities. Selections stay provider-neutral and reset
 cleanly when a host changes account or model.
+Discovered models can be scoped to the authenticated account that advertised them.

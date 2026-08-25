@@ -196,6 +196,44 @@ test("provider account picker exposes default model controls before a thread sel
   assert.match(html, /value="high"/);
 });
 
+test("provider account picker only exposes models discovered for the selected account", () => {
+  const html = renderToStaticMarkup(
+    createElement(ProviderAccountPicker, {
+      providers: [{
+        id: "openrouter",
+        displayName: "OpenRouter",
+        modes: ["chat_completion"],
+        authMethods: ["api_key"],
+      }],
+      connections: [{
+        id: "account-a",
+        providerId: "openrouter",
+        label: "Account A",
+        scope: "personal",
+        status: "connected",
+        authMethod: "api_key",
+      }],
+      models: [{
+        id: "anthropic/claude-sonnet-4.6",
+        displayName: "Claude Sonnet 4.6",
+        providerId: "openrouter",
+        connectionId: "account-a",
+      }, {
+        id: "x-ai/grok-4.6",
+        displayName: "Grok 4.6",
+        providerId: "openrouter",
+        connectionId: "account-b",
+      }],
+      selectedConnectionId: "account-a",
+      onSelectionChange() {},
+      onConnect() {},
+    }),
+  );
+
+  assert.match(html, /Claude Sonnet 4.6/);
+  assert.doesNotMatch(html, /Grok 4.6/);
+});
+
 test("shell accepts an application composer and message renderer without forking the timeline", () => {
   const state = {
     ...emptyState,
