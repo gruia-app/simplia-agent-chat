@@ -31,6 +31,7 @@ export interface ProviderModelDefinition {
   displayName: string;
   providerId: string;
   reasoningEfforts?: string[];
+  verbosityLevels?: string[];
   isDefault?: boolean;
   inputModalities?: Array<"text" | "image" | "audio">;
 }

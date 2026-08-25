@@ -130,12 +130,17 @@ test("provider account picker exposes account and model selection without creden
         id: "gpt-5.6-sol",
         displayName: "GPT-5.6 Sol",
         providerId: "codex_cli",
+        reasoningEfforts: ["low", "medium", "high", "xhigh", "max"],
+        verbosityLevels: ["low", "medium", "high"],
         isDefault: true,
       }],
       selectedConnectionId: "account-1",
       selectedModelId: "gpt-5.6-sol",
       accountLabel: "Provider account",
       modelLabel: "Model",
+      reasoningEffortLabel: "Reasoning effort",
+      verbosityLabel: "Verbosity",
+      providerDefaultLabel: "Provider default",
       connectLabel: "Connect provider",
       credentialCanary: "must-not-render",
       onSelectionChange() {},
@@ -147,6 +152,11 @@ test("provider account picker exposes account and model selection without creden
   assert.match(html, /Roberto/);
   assert.match(html, /operator@example.com/);
   assert.match(html, /GPT-5.6 Sol/);
+  assert.match(html, /Reasoning effort/);
+  assert.match(html, /Verbosity/);
+  assert.match(html, /Provider default/);
+  assert.match(html, /value="xhigh"/);
+  assert.match(html, /value="max"/);
   assert.match(html, /Connect provider/);
   assert.doesNotMatch(html, /must-not-render/);
 });

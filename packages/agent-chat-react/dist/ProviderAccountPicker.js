@@ -6,13 +6,14 @@ function connectionOptionLabel(connection) {
         ?? connection.identity?.organization;
     return identity ? `${connection.label} (${identity})` : connection.label;
 }
-export function ProviderAccountPicker({ providers, connections, models, selectedConnectionId, selectedModelId, accountLabel = "Provider account", modelLabel = "Model", connectLabel = "Connect provider", unavailableLabel = "Reconnect required", disabled = false, onSelectionChange, onConnect, }) {
+export function ProviderAccountPicker({ providers, connections, models, selectedConnectionId, selectedModelId, selectedReasoningEffort, selectedVerbosity, accountLabel = "Provider account", modelLabel = "Model", reasoningEffortLabel = "Reasoning effort", verbosityLabel = "Verbosity", providerDefaultLabel = "Provider default", connectLabel = "Connect provider", unavailableLabel = "Reconnect required", disabled = false, onSelectionChange, onConnect, }) {
     const accountId = useId();
     const modelId = useId();
     const selectedConnection = connections.find((connection) => connection.id === selectedConnectionId);
     const availableModels = selectedConnection
         ? models.filter((model) => model.providerId === selectedConnection.providerId)
         : [];
+    const selectedModel = availableModels.find((model) => model.id === selectedModelId);
     const selectedProvider = selectedConnection
         ? providers.find((provider) => provider.id === selectedConnection.providerId)
         : undefined;
@@ -35,6 +36,26 @@ export function ProviderAccountPicker({ providers, connections, models, selected
                                 providerId: selectedConnection.providerId,
                                 modelId: event.target.value,
                             });
-                        }, children: availableModels.map((model) => (_jsx("option", { value: model.id, children: model.displayName }, model.id))) })] }), _jsx("button", { type: "button", className: "sac-button sac-provider-connect", disabled: disabled, onClick: () => onConnect(selectedProvider?.id), children: connectLabel })] }));
+                        }, children: availableModels.map((model) => (_jsx("option", { value: model.id, children: model.displayName }, model.id))) })] }), selectedModel?.reasoningEfforts?.length ? (_jsxs("div", { className: "sac-provider-field", children: [_jsx("label", { htmlFor: `${modelId}-reasoning`, children: reasoningEffortLabel }), _jsxs("select", { id: `${modelId}-reasoning`, value: selectedReasoningEffort ?? "", disabled: disabled, onChange: (event) => {
+                            if (!selectedConnection || !selectedModel)
+                                return;
+                            onSelectionChange({
+                                connectionId: selectedConnection.id,
+                                providerId: selectedConnection.providerId,
+                                modelId: selectedModel.id,
+                                ...(event.target.value ? { reasoningEffort: event.target.value } : {}),
+                                ...(selectedVerbosity ? { verbosity: selectedVerbosity } : {}),
+                            });
+                        }, children: [_jsx("option", { value: "", children: providerDefaultLabel }), selectedModel.reasoningEfforts.map((effort) => (_jsx("option", { value: effort, children: effort }, effort)))] })] })) : null, selectedModel?.verbosityLevels?.length ? (_jsxs("div", { className: "sac-provider-field", children: [_jsx("label", { htmlFor: `${modelId}-verbosity`, children: verbosityLabel }), _jsxs("select", { id: `${modelId}-verbosity`, value: selectedVerbosity ?? "", disabled: disabled, onChange: (event) => {
+                            if (!selectedConnection || !selectedModel)
+                                return;
+                            onSelectionChange({
+                                connectionId: selectedConnection.id,
+                                providerId: selectedConnection.providerId,
+                                modelId: selectedModel.id,
+                                ...(selectedReasoningEffort ? { reasoningEffort: selectedReasoningEffort } : {}),
+                                ...(event.target.value ? { verbosity: event.target.value } : {}),
+                            });
+                        }, children: [_jsx("option", { value: "", children: providerDefaultLabel }), selectedModel.verbosityLevels.map((verbosity) => (_jsx("option", { value: verbosity, children: verbosity }, verbosity)))] })] })) : null, _jsx("button", { type: "button", className: "sac-button sac-provider-connect", disabled: disabled, onClick: () => onConnect(selectedProvider?.id), children: connectLabel })] }));
 }
 //# sourceMappingURL=ProviderAccountPicker.js.map

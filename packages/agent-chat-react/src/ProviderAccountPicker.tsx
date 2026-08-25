@@ -9,6 +9,8 @@ export interface ProviderSelection {
   connectionId: string;
   providerId: string;
   modelId?: string;
+  reasoningEffort?: string;
+  verbosity?: string;
 }
 
 export interface ProviderAccountPickerProps {
@@ -17,8 +19,13 @@ export interface ProviderAccountPickerProps {
   models: readonly ProviderModelDefinition[];
   selectedConnectionId?: string;
   selectedModelId?: string;
+  selectedReasoningEffort?: string;
+  selectedVerbosity?: string;
   accountLabel?: string;
   modelLabel?: string;
+  reasoningEffortLabel?: string;
+  verbosityLabel?: string;
+  providerDefaultLabel?: string;
   connectLabel?: string;
   unavailableLabel?: string;
   disabled?: boolean;
@@ -39,8 +46,13 @@ export function ProviderAccountPicker({
   models,
   selectedConnectionId,
   selectedModelId,
+  selectedReasoningEffort,
+  selectedVerbosity,
   accountLabel = "Provider account",
   modelLabel = "Model",
+  reasoningEffortLabel = "Reasoning effort",
+  verbosityLabel = "Verbosity",
+  providerDefaultLabel = "Provider default",
   connectLabel = "Connect provider",
   unavailableLabel = "Reconnect required",
   disabled = false,
@@ -53,6 +65,7 @@ export function ProviderAccountPicker({
   const availableModels = selectedConnection
     ? models.filter((model) => model.providerId === selectedConnection.providerId)
     : [];
+  const selectedModel = availableModels.find((model) => model.id === selectedModelId);
   const selectedProvider = selectedConnection
     ? providers.find((provider) => provider.id === selectedConnection.providerId)
     : undefined;
@@ -113,6 +126,58 @@ export function ProviderAccountPicker({
           ))}
         </select>
       </div>
+
+      {selectedModel?.reasoningEfforts?.length ? (
+        <div className="sac-provider-field">
+          <label htmlFor={`${modelId}-reasoning`}>{reasoningEffortLabel}</label>
+          <select
+            id={`${modelId}-reasoning`}
+            value={selectedReasoningEffort ?? ""}
+            disabled={disabled}
+            onChange={(event) => {
+              if (!selectedConnection || !selectedModel) return;
+              onSelectionChange({
+                connectionId: selectedConnection.id,
+                providerId: selectedConnection.providerId,
+                modelId: selectedModel.id,
+                ...(event.target.value ? { reasoningEffort: event.target.value } : {}),
+                ...(selectedVerbosity ? { verbosity: selectedVerbosity } : {}),
+              });
+            }}
+          >
+            <option value="">{providerDefaultLabel}</option>
+            {selectedModel.reasoningEfforts.map((effort) => (
+              <option key={effort} value={effort}>{effort}</option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+
+      {selectedModel?.verbosityLevels?.length ? (
+        <div className="sac-provider-field">
+          <label htmlFor={`${modelId}-verbosity`}>{verbosityLabel}</label>
+          <select
+            id={`${modelId}-verbosity`}
+            value={selectedVerbosity ?? ""}
+            disabled={disabled}
+            onChange={(event) => {
+              if (!selectedConnection || !selectedModel) return;
+              onSelectionChange({
+                connectionId: selectedConnection.id,
+                providerId: selectedConnection.providerId,
+                modelId: selectedModel.id,
+                ...(selectedReasoningEffort ? { reasoningEffort: selectedReasoningEffort } : {}),
+                ...(event.target.value ? { verbosity: event.target.value } : {}),
+              });
+            }}
+          >
+            <option value="">{providerDefaultLabel}</option>
+            {selectedModel.verbosityLevels.map((verbosity) => (
+              <option key={verbosity} value={verbosity}>{verbosity}</option>
+            ))}
+          </select>
+        </div>
+      ) : null}
 
       <button
         type="button"
