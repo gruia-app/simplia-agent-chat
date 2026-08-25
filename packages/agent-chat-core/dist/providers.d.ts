@@ -15,6 +15,8 @@ export interface ProviderModelDefinition {
     id: string;
     displayName: string;
     providerId: string;
+    /** Account that advertised this model. Omit for provider-wide catalog entries. */
+    connectionId?: string;
     reasoningEfforts?: string[];
     verbosityLevels?: string[];
     isDefault?: boolean;
