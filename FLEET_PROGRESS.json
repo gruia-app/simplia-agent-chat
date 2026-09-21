@@ -1,7 +1,7 @@
 {
   "app": "simplia-agent-chat",
-  "updated_at": "2026-09-21T22:55:00Z",
-  "current": "limits/metering stream: ChatLimitNotice + per-tenant chat usage metering shipped (pending PR)",
+  "updated_at": "2026-09-21T23:10:00Z",
+  "current": "limits/metering merged (PR #13) + thread erasure pending PR",
   "done": [
     "core: ChatSuggestionRegistry + resolveChatSuggestions + createAccountSnapshotDerive (empty-account/quota precedence)",
     "core: VoiceTransport port, VoiceUsageEvent metering, createVoiceSession, Deepgram ephemeral-token + WS proxy transports, scripted transport",
@@ -18,7 +18,8 @@
     "SETTLED verified 2026-09-21: PR12 MERGED ec94e8a7379caeec0af2ff064473b02ec34a2e49; no pending deploy or PR; parked manual",
     "core: ChatLimitNotice + normalizeChatLimitNotice (fail-closed), usage-meter: diffChatUsage/collectUsageMeterEvents/watchChatUsage -> {threadId, organizationId, delta}",
     "react: LimitNoticeBar + shell limitNotice/onLimitAction, blocking disables submit, draft stays editable; copy key limitNoticeLabel; .sac-limit-notice styles",
-    "docs: CHAT_FIRST metering+limits section, INTEGRATION.md pointer; changeset minor x3"
+    "docs: CHAT_FIRST metering+limits section, INTEGRATION.md pointer; changeset minor x3",
+    "core: purgeThreadFromState — GDPR-style thread erasure from reduced state, replay guards kept, non-mutating"
   ],
   "blocked": [],
   "prs_open": [],
