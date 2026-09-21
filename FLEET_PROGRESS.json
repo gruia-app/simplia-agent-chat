@@ -1,7 +1,7 @@
 {
   "app": "simplia-agent-chat",
-  "updated_at": "2026-09-21T22:20:00Z",
-  "current": "converged",
+  "updated_at": "2026-09-21T22:55:00Z",
+  "current": "limits/metering stream: ChatLimitNotice + per-tenant chat usage metering shipped (pending PR)",
   "done": [
     "core: ChatSuggestionRegistry + resolveChatSuggestions + createAccountSnapshotDerive (empty-account/quota precedence)",
     "core: VoiceTransport port, VoiceUsageEvent metering, createVoiceSession, Deepgram ephemeral-token + WS proxy transports, scripted transport",
@@ -14,10 +14,14 @@
     "react: theme=high-contrast preset — AAA body text, AA status, 3:1 borders/focus, contrast-tested",
     "examples/headless-lab: framework-neutral Node rendering + suggestion demo with node --test coverage",
     "docs/MIGRATION.md versioned breaking-change guide (semver/protocol/schemaVersion axes) + release-policy guard test",
-    "ROADMAP: all actionable pre-1.0 items completed"
+    "ROADMAP: all actionable pre-1.0 items completed",
+    "SETTLED verified 2026-09-21: PR12 MERGED ec94e8a7379caeec0af2ff064473b02ec34a2e49; no pending deploy or PR; parked manual",
+    "core: ChatLimitNotice + normalizeChatLimitNotice (fail-closed), usage-meter: diffChatUsage/collectUsageMeterEvents/watchChatUsage -> {threadId, organizationId, delta}",
+    "react: LimitNoticeBar + shell limitNotice/onLimitAction, blocking disables submit, draft stays editable; copy key limitNoticeLabel; .sac-limit-notice styles",
+    "docs: CHAT_FIRST metering+limits section, INTEGRATION.md pointer; changeset minor x3"
   ],
   "blocked": [],
   "prs_open": [],
   "deploys_pending": [],
-  "notes": "Lane converged. Only remaining roadmap item is live-provider conformance suites (Codex/LangChain/OpenAI-compatible) which needs real endpoints/credentials -> human decision. Second-wave app adoption is coordinator-gated per WORK_BACKLOG."
+  "notes": "Backlog stream 2 (limits/metering E2E) applied to the library: typed limit banner at point of limit + tenant usage deltas. Streams 1/3/4/6/7/8 are app-side (per-app repos), not library code."
 }
