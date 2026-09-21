@@ -4,10 +4,10 @@
 
 - Virtualized or paged timeline contract for very long sessions. Completed as additive `selectTimelinePage` with id-based cursors (`turn:`-prefixed, foreign/malformed cursors fail closed) over the canonical `selectThreadTurns` order. Row measurement, virtualization library and scroll anchoring remain host-owned.
 - Stable snapshot and replay persistence interface. Completed as additive `ChatRuntime` plus a caller-owned `ChatPersistencePort` (`commitChatEvent`, `hydrateChatRuntime`, `thread.snapshot` wire format). Application storage remains consumer-owned.
-- Framework-neutral rendering examples beyond React.
-- Surface schema conformance kit and reusable test helpers. Completed as runner-agnostic `runCoreConformance` plus React markup helpers `runWorkspaceMarkupConformance` and `runSurfaceHostMarkupConformance`. Timeline virtualization and live provider conformance remain open.
+- Framework-neutral rendering examples beyond React. Completed as `examples/headless-lab`: dependency-free Node example rendering escaped timeline HTML through `selectTimelinePage` plus suggestion resolution, with `node --test` coverage.
+- Surface schema conformance kit and reusable test helpers. Completed as runner-agnostic `runCoreConformance` plus React markup helpers `runWorkspaceMarkupConformance` and `runSurfaceHostMarkupConformance`. Live provider conformance remains open; host-side timeline virtualization consumes `selectTimelinePage`.
 - Provider conformance suites for live Codex, LangChain and OpenAI-compatible transports.
-- Theme contract with documented token groups and high-contrast examples.
+- Theme contract with documented token groups and high-contrast examples. Completed: semantic token table in `docs/THEMING.md` plus `theme="high-contrast"` preset (AAA body text, AA status text, 3:1 borders/focus) verified by contrast-ratio tests.
 - Versioned migration guide for every protocol or surface breaking change.
 
 ## Ecosystem adoption

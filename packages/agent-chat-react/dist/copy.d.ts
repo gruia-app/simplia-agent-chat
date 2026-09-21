@@ -1,5 +1,5 @@
 import type { ThreadRunPhase } from "simplia-agent-chat/core";
-export type AgentChatTheme = "dark" | "light";
+export type AgentChatTheme = "dark" | "light" | "high-contrast";
 export interface AgentChatCopy {
     readonly jumpToLive: string;
     readonly artifactStageLabel: string;
