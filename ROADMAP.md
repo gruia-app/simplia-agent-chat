@@ -8,7 +8,7 @@
 - Surface schema conformance kit and reusable test helpers. Completed as runner-agnostic `runCoreConformance` plus React markup helpers `runWorkspaceMarkupConformance` and `runSurfaceHostMarkupConformance`. Live provider conformance remains open; host-side timeline virtualization consumes `selectTimelinePage`.
 - Provider conformance suites for live Codex, LangChain and OpenAI-compatible transports.
 - Theme contract with documented token groups and high-contrast examples. Completed: semantic token table in `docs/THEMING.md` plus `theme="high-contrast"` preset (AAA body text, AA status text, 3:1 borders/focus) verified by contrast-ratio tests.
-- Versioned migration guide for every protocol or surface breaking change.
+- Versioned migration guide for every protocol or surface breaking change. Completed as `docs/MIGRATION.md` covering the three version axes (package semver, `CHAT_PROTOCOL_VERSION`, per-kind `schemaVersion`) with an entry format; the release-policy test asserts the guide tracks the live protocol major.
 
 ## Ecosystem adoption
 

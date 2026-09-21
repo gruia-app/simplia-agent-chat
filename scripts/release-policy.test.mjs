@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { CHAT_PROTOCOL_VERSION } from "../packages/agent-chat-core/dist/protocol.js";
 import { validateReleasePolicy } from "./release-policy.mjs";
 
 const VALID = {
@@ -49,4 +51,11 @@ test("rejects lightweight, unverified, indirect, or malformed tag targets", () =
       "release_tag_target_must_be_full_commit_sha",
     ],
   );
+});
+
+test("migration guide tracks the live protocol major", () => {
+  const guide = readFileSync(new URL("../docs/MIGRATION.md", import.meta.url), "utf8");
+  assert.match(guide, /CHAT_PROTOCOL_VERSION/);
+  assert.match(guide, new RegExp(`protocol \`${CHAT_PROTOCOL_VERSION}\``));
+  assert.match(guide, /schemaVersion/);
 });
