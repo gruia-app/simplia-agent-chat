@@ -1,7 +1,7 @@
 {
   "app": "simplia-agent-chat",
-  "updated_at": "2026-09-21T13:10:00Z",
-  "current": "Voice hardening: error reasons, provider metering, backend docs — check running, PR next",
+  "updated_at": "2026-09-21T13:25:00Z",
+  "current": "Voice hardening shipped in PR #10 (ready for review)",
   "done": [
     "core: ChatSuggestionRegistry + resolveChatSuggestions + createAccountSnapshotDerive (empty-account/quota precedence)",
     "core: VoiceTransport port, VoiceUsageEvent metering, createVoiceSession, Deepgram ephemeral-token + WS proxy transports, scripted transport",
@@ -17,7 +17,9 @@
     "tests: provider metering + transport_failure/errorReason + mic-denial zero-byte event"
   ],
   "blocked": [],
-  "prs_open": [],
+  "prs_open": [
+    "#10 feat: harden voice module errors and tenant metering"
+  ],
   "deploys_pending": [],
   "notes": "PR #9 merged (fda086a). Hardening: every failure -> status error + typed errorReason, UI degrades to text, retryable. Metering: one event/session with provider+tenantId+durationMs; zero-byte error event when transport never opens."
 }
