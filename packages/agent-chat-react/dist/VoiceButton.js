@@ -15,14 +15,17 @@ export function VoiceButton({ capture, ariaLabel, disabled = false, copy, theme 
     const resolved = resolveAgentChatCopy(copy);
     const recording = capture.status === "recording";
     const starting = capture.status === "starting";
+    const errored = capture.status === "error";
     const unavailable = !capture.supported;
     const label = unavailable
         ? resolved.voiceUnsupportedLabel
-        : starting
-            ? resolved.voiceConnectingLabel
-            : recording
-                ? resolved.voiceStopLabel
-                : resolved.voiceStartLabel;
+        : errored
+            ? resolved.voiceErrorLabel
+            : starting
+                ? resolved.voiceConnectingLabel
+                : recording
+                    ? resolved.voiceStopLabel
+                    : resolved.voiceStartLabel;
     const press = useCallback(() => {
         if (disabled || unavailable)
             return;

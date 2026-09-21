@@ -7,6 +7,7 @@
  */
 export const DEFAULT_VOICE_MODEL = "nova-3";
 export const DEFAULT_VOICE_LANGUAGE = "multi";
+export const DEFAULT_VOICE_PROVIDER = "deepgram";
 export const DEEPGRAM_LISTEN_URL = "wss://api.deepgram.com/v1/listen";
 function isNonEmptyString(value) {
     return typeof value === "string" && value.trim().length > 0;
@@ -33,6 +34,7 @@ export function createVoiceSession(options) {
         sessionId: isNonEmptyString(options.sessionId) ? options.sessionId.trim() : defaultSessionId(),
         model: isNonEmptyString(options.model) ? options.model.trim() : DEFAULT_VOICE_MODEL,
         language: isNonEmptyString(options.language) ? options.language.trim() : DEFAULT_VOICE_LANGUAGE,
+        provider: isNonEmptyString(options.provider) ? options.provider.trim() : DEFAULT_VOICE_PROVIDER,
         ...(isNonEmptyString(options.tenantId) ? { tenantId: options.tenantId.trim() } : {}),
         ...(isNonEmptyString(options.organizationId) ? { organizationId: options.organizationId.trim() } : {}),
     };
@@ -56,6 +58,7 @@ export function createVoiceSession(options) {
         usage = {
             kind: "voice_session",
             sessionId: config.sessionId,
+            provider: config.provider,
             model: config.model,
             language: config.language,
             ...(config.tenantId ? { tenantId: config.tenantId } : {}),

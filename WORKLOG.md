@@ -33,3 +33,19 @@ Branch `t3code/fleet-agent-chat-260921-1147`.
 
 Verification: core build+20 tests, react build+82 tests (7 new), vite build
 of react-lab. `pnpm check` pending final run.
+
+## Voice hardening (follow-up)
+
+- `packages/agent-chat-core/src/voice.ts`: `provider` on `VoiceSessionConfig`
+  + `VoiceUsageEvent` (default `deepgram`) — quota adapters get
+  `{tenant_id, duration_ms, provider}` without guessing.
+- `packages/agent-chat-react/src/use-voice-capture.ts`: exposes
+  `errorReason` (typed union incl. `unsupported`/`capture_failed`/`token_failed`/
+  `transport_failed`); `provider` option plumbed into session config.
+- `VoiceButton`: error state uses `voiceErrorLabel`, stays retryable.
+- `docs/CHAT_FIRST.md`: error-degradation matrix (reason → billed?),
+  FastAPI ephemeral-token endpoint + WS proxy reference implementations,
+  metering contract with snake_case quota mapping.
+- Tests: provider in metering, transport failure reason + retry, mic denial
+  emits zero-byte `error` event without opening the transport.
+- Changeset: `.changeset/voice-hardening-metering.md` (minor ×3).

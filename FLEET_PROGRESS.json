@@ -1,7 +1,7 @@
 {
   "app": "simplia-agent-chat",
-  "updated_at": "2026-09-21T12:30:00Z",
-  "current": "Mission complete: chat-first home + Deepgram voice shipped in PR #9 (ready for review)",
+  "updated_at": "2026-09-21T13:25:00Z",
+  "current": "Voice hardening shipped in PR #10 (ready for review)",
   "done": [
     "core: ChatSuggestionRegistry + resolveChatSuggestions + createAccountSnapshotDerive (empty-account/quota precedence)",
     "core: VoiceTransport port, VoiceUsageEvent metering, createVoiceSession, Deepgram ephemeral-token + WS proxy transports, scripted transport",
@@ -10,10 +10,16 @@
     "example react-lab: home fixture with account-scenario switcher, suggestion chips, scripted voice + metering output",
     "docs/CHAT_FIRST.md per-app recipe + INTEGRATION.md link",
     "changeset chat-first-home-voice (minor, 3 packages)",
-    "tests: 20 core + 7 react new tests passing"
+    "tests: 20 core + 7 react new tests passing",
+    "core: provider field on VoiceSessionConfig/VoiceUsageEvent (default deepgram)",
+    "react: useVoiceCapture errorReason + VoiceButton error state, retryable",
+    "docs/CHAT_FIRST.md: error degradation matrix + FastAPI token/proxy reference examples + metering snake_case mapping",
+    "tests: provider metering + transport_failure/errorReason + mic-denial zero-byte event"
   ],
   "blocked": [],
-  "prs_open": ["https://github.com/gruia-app/simplia-agent-chat/pull/9"],
+  "prs_open": [
+    "#10 feat: harden voice module errors and tenant metering"
+  ],
   "deploys_pending": [],
-  "notes": "Provider key never in browser: ephemeral token or app-backend WS proxy. Billing per app via meter hook -> app quota system. Defaults nova-3/multi."
+  "notes": "PR #9 merged (fda086a). Hardening: every failure -> status error + typed errorReason, UI degrades to text, retryable. Metering: one event/session with provider+tenantId+durationMs; zero-byte error event when transport never opens."
 }

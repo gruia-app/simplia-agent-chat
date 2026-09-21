@@ -257,6 +257,7 @@ test("useVoiceCapture records, transcribes and meters one session", async () => 
     assert.equal(output().status, "idle");
     assert.deepEqual(sourceLog, ["start", "stop"]);
     assert.equal(metered.length, 1);
+    assert.equal(metered[0].provider, "deepgram");
     assert.equal(metered[0].audioBytes, 4);
     assert.equal(metered[0].tenantId, "tenant-1");
     assert.equal(metered[0].finalTranscripts, 1);
@@ -299,7 +300,125 @@ test("useVoiceCapture reports unsupported capture", async () => {
     });
     await act(async () => globalThis.__capture.start());
     assert.equal(container.querySelector("output").dataset.status, "error");
+    assert.equal(globalThis.__capture.errorReason, "unsupported");
     assert.deepEqual(errors, ["unsupported"]);
+    delete globalThis.__capture;
+    await act(async () => root.unmount());
+  });
+});
+
+test("useVoiceCapture exposes the transport failure reason and stays retryable", async () => {
+  await withDom(async ({ document }) => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const errors = [];
+    let openAttempts = 0;
+    const transport = {
+      open: async () => {
+        openAttempts += 1;
+        throw new Error("deepgram unreachable");
+      },
+    };
+    const createSource = async () => ({ start() {}, stop() {} });
+
+    function Harness() {
+      const capture = useVoiceCapture({
+        transport,
+        supported: true,
+        createSource,
+        onError: (reason) => errors.push(reason),
+      });
+      globalThis.__capture = capture;
+      return createElement("div", null,
+        createElement("output", {
+          "data-status": capture.status,
+          "data-reason": capture.errorReason ?? "",
+        }),
+        createElement(VoiceButton, { capture }));
+    }
+
+    await act(async () => {
+      root.render(createElement(Harness));
+    });
+    const window = document.defaultView;
+    const button = container.querySelector(".sac-voice-button");
+    const output = () => container.querySelector("output").dataset;
+
+    await act(async () => {
+      button.dispatchEvent(new window.KeyboardEvent("keydown", { key: " ", bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    assert.equal(output().status, "error");
+    assert.equal(output().reason, "transport_failed");
+    assert.deepEqual(errors, ["transport_failed"]);
+    assert.equal(openAttempts, 1);
+    // Degraded UI: error label on the button, composer text path untouched.
+    assert.match(button.getAttribute("aria-label"), /failed/i);
+
+    await act(async () => {
+      button.dispatchEvent(new window.KeyboardEvent("keydown", { key: " ", bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    assert.equal(openAttempts, 2);
+    assert.equal(output().status, "error");
+    delete globalThis.__capture;
+    await act(async () => root.unmount());
+  });
+});
+
+test("useVoiceCapture reports mic denial without opening the transport", async () => {
+  await withDom(async ({ document }) => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const errors = [];
+    const metered = [];
+    let openAttempts = 0;
+    const transport = {
+      open: async () => {
+        openAttempts += 1;
+        return { send() {}, close() {} };
+      },
+    };
+    const createSource = async () => {
+      const denied = new Error("denied");
+      denied.name = "NotAllowedError";
+      throw denied;
+    };
+
+    function Harness() {
+      const capture = useVoiceCapture({
+        transport,
+        supported: true,
+        createSource,
+        meter: (event) => metered.push(event),
+        onError: (reason) => errors.push(reason),
+      });
+      globalThis.__capture = capture;
+      return createElement("output", {
+        "data-status": capture.status,
+        "data-reason": capture.errorReason ?? "",
+      });
+    }
+
+    await act(async () => {
+      root.render(createElement(Harness));
+    });
+    await act(async () => {
+      globalThis.__capture.start();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const output = container.querySelector("output").dataset;
+    assert.equal(output.status, "error");
+    assert.equal(output.reason, "capture_failed");
+    assert.deepEqual(errors, ["capture_failed"]);
+    // Mic was never granted: transport never opened, and the metering event
+    // records a zero-byte failed attempt — nothing billable.
+    assert.equal(openAttempts, 0);
+    assert.equal(metered.length, 1);
+    assert.equal(metered[0].endReason, "error");
+    assert.equal(metered[0].audioBytes, 0);
     delete globalThis.__capture;
     await act(async () => root.unmount());
   });

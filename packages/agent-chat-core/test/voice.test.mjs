@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   DEFAULT_VOICE_LANGUAGE,
   DEFAULT_VOICE_MODEL,
+  DEFAULT_VOICE_PROVIDER,
   createDeepgramSocketTransport,
   createScriptedVoiceTransport,
   createVoiceSession,
@@ -65,12 +66,14 @@ test("createVoiceSession emits one metering event with usage", async () => {
   });
   assert.equal(session.config.model, DEFAULT_VOICE_MODEL);
   assert.equal(session.config.language, DEFAULT_VOICE_LANGUAGE);
+  assert.equal(session.config.provider, DEFAULT_VOICE_PROVIDER);
 
   assert.equal(await session.start(), true);
   session.push(new Blob(["aa"]));
   session.push(new Blob(["bbbb"]));
   const event = session.stop();
   assert.equal(event.kind, "voice_session");
+  assert.equal(event.provider, "deepgram");
   assert.equal(event.tenantId, "tenant-9");
   assert.equal(event.organizationId, "org-2");
   assert.equal(event.audioBytes, 6);
@@ -80,6 +83,19 @@ test("createVoiceSession emits one metering event with usage", async () => {
   assert.equal(events.length, 1);
   assert.equal(session.status, "closed");
   assert.equal(sent.length, 2);
+});
+
+test("createVoiceSession honors a custom provider for metering", async () => {
+  const events = [];
+  const { transport } = makeTransport();
+  const session = createVoiceSession({
+    transport,
+    provider: "whisper-local",
+    meter: (e) => events.push(e),
+  });
+  await session.start();
+  assert.equal(session.config.provider, "whisper-local");
+  assert.equal(session.stop().provider, "whisper-local");
 });
 
 test("createVoiceSession counts final transcripts and ignores late frames", async () => {

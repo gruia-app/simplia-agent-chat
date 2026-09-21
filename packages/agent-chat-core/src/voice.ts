@@ -8,6 +8,7 @@
 
 export const DEFAULT_VOICE_MODEL = "nova-3";
 export const DEFAULT_VOICE_LANGUAGE = "multi";
+export const DEFAULT_VOICE_PROVIDER = "deepgram";
 export const DEEPGRAM_LISTEN_URL = "wss://api.deepgram.com/v1/listen";
 
 export interface VoiceSessionConfig {
@@ -16,6 +17,8 @@ export interface VoiceSessionConfig {
   model: string;
   /** BCP-47 or provider language tag. `multi` covers the Spanish fleet. */
   language: string;
+  /** Speech provider the session is billed against. Defaults to `deepgram`. */
+  provider: string;
   /** Tenant the usage event is billed to. */
   tenantId?: string;
   /** Organization the usage event is billed to. */
@@ -64,10 +67,13 @@ export interface VoiceTransport {
 /**
  * Per-session metering record emitted exactly once when a session ends. Apps
  * connect `meter` to their own quota/billing pipeline; nothing is shared.
+ * Quota systems consuming snake_case map `tenantId` → `tenant_id` and
+ * `durationMs` → `duration_ms`; `provider` identifies the billed service.
  */
 export interface VoiceUsageEvent {
   kind: "voice_session";
   sessionId: string;
+  provider: string;
   model: string;
   language: string;
   tenantId?: string;
@@ -97,6 +103,7 @@ export interface CreateVoiceSessionOptions {
   sessionId?: string;
   model?: string;
   language?: string;
+  provider?: string;
   tenantId?: string;
   organizationId?: string;
   meter?: VoiceUsageMeter;
@@ -151,6 +158,7 @@ export function createVoiceSession(options: CreateVoiceSessionOptions): VoiceSes
     sessionId: isNonEmptyString(options.sessionId) ? options.sessionId.trim() : defaultSessionId(),
     model: isNonEmptyString(options.model) ? options.model.trim() : DEFAULT_VOICE_MODEL,
     language: isNonEmptyString(options.language) ? options.language.trim() : DEFAULT_VOICE_LANGUAGE,
+    provider: isNonEmptyString(options.provider) ? options.provider.trim() : DEFAULT_VOICE_PROVIDER,
     ...(isNonEmptyString(options.tenantId) ? { tenantId: options.tenantId.trim() } : {}),
     ...(isNonEmptyString(options.organizationId) ? { organizationId: options.organizationId.trim() } : {}),
   };
@@ -175,6 +183,7 @@ export function createVoiceSession(options: CreateVoiceSessionOptions): VoiceSes
     usage = {
       kind: "voice_session",
       sessionId: config.sessionId,
+      provider: config.provider,
       model: config.model,
       language: config.language,
       ...(config.tenantId ? { tenantId: config.tenantId } : {}),
