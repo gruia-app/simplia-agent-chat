@@ -19,6 +19,7 @@ import {
   failInterruptRequest,
   isAffirmativeDecision,
   PendingInteractions,
+  ProviderAccountPicker,
   ReactSurfaceRegistry,
   reconcileInterruptRequest,
   resetInterruptRequest,
@@ -105,6 +106,132 @@ test("shell exposes generic context rail and application-specific empty copy", (
   assert.match(html, /class="sac-context-rail"/);
   assert.match(html, /aria-label="Context actions"/);
   assert.match(html, /Ask about this application\./);
+});
+
+test("provider account picker exposes account and model selection without credential payloads", () => {
+  const html = renderToStaticMarkup(
+    createElement(ProviderAccountPicker, {
+      providers: [{
+        id: "codex_cli",
+        displayName: "Codex",
+        modes: ["agent"],
+        authMethods: ["chatgpt_device", "api_key"],
+      }],
+      connections: [{
+        id: "account-1",
+        providerId: "codex_cli",
+        label: "Roberto",
+        scope: "personal",
+        status: "connected",
+        authMethod: "chatgpt_device",
+        identity: { email: "operator@example.com" },
+      }],
+      models: [{
+        id: "gpt-5.6-sol",
+        displayName: "GPT-5.6 Sol",
+        providerId: "codex_cli",
+        reasoningEfforts: ["low", "medium", "high", "xhigh", "max"],
+        verbosityLevels: ["low", "medium", "high"],
+        isDefault: true,
+      }],
+      selectedConnectionId: "account-1",
+      selectedModelId: "gpt-5.6-sol",
+      accountLabel: "Provider account",
+      modelLabel: "Model",
+      reasoningEffortLabel: "Reasoning effort",
+      verbosityLabel: "Verbosity",
+      providerDefaultLabel: "Provider default",
+      connectLabel: "Connect provider",
+      credentialCanary: "must-not-render",
+      onSelectionChange() {},
+      onConnect() {},
+    }),
+  );
+
+  assert.match(html, /Provider account/);
+  assert.match(html, /Roberto/);
+  assert.match(html, /operator@example.com/);
+  assert.match(html, /GPT-5.6 Sol/);
+  assert.match(html, /Reasoning effort/);
+  assert.match(html, /Verbosity/);
+  assert.match(html, /Provider default/);
+  assert.match(html, /value="xhigh"/);
+  assert.match(html, /value="max"/);
+  assert.match(html, /Connect provider/);
+  assert.doesNotMatch(html, /must-not-render/);
+});
+
+test("provider account picker exposes default model controls before a thread selection exists", () => {
+  const html = renderToStaticMarkup(
+    createElement(ProviderAccountPicker, {
+      providers: [{
+        id: "codex_cli",
+        displayName: "Codex",
+        modes: ["agent"],
+        authMethods: ["chatgpt_device"],
+      }],
+      connections: [{
+        id: "account-default",
+        providerId: "codex_cli",
+        label: "Default account",
+        scope: "personal",
+        status: "connected",
+        authMethod: "chatgpt_device",
+        isDefault: true,
+      }],
+      models: [{
+        id: "gpt-5.6-sol",
+        displayName: "GPT-5.6 Sol",
+        providerId: "codex_cli",
+        reasoningEfforts: ["low", "high"],
+        isDefault: true,
+      }],
+      onSelectionChange() {},
+      onConnect() {},
+    }),
+  );
+
+  assert.match(html, /value="account-default" selected/);
+  assert.match(html, /Reasoning effort/);
+  assert.match(html, /value="high"/);
+});
+
+test("provider account picker only exposes models discovered for the selected account", () => {
+  const html = renderToStaticMarkup(
+    createElement(ProviderAccountPicker, {
+      providers: [{
+        id: "openrouter",
+        displayName: "OpenRouter",
+        modes: ["chat_completion"],
+        authMethods: ["api_key"],
+      }],
+      connections: [{
+        id: "account-a",
+        providerId: "openrouter",
+        label: "Account A",
+        scope: "personal",
+        status: "connected",
+        authMethod: "api_key",
+      }],
+      models: [{
+        id: "anthropic/claude-sonnet-4.6",
+        displayName: "Claude Sonnet 4.6",
+        providerId: "openrouter",
+        connectionId: "account-a",
+      }, {
+        id: "x-ai/grok-4.6",
+        displayName: "Grok 4.6",
+        providerId: "openrouter",
+        connectionId: "account-b",
+      }],
+      selectedConnectionId: "account-a",
+      onSelectionChange() {},
+      onConnect() {},
+    }),
+  );
+
+  assert.match(html, /Claude Sonnet 4.6/);
+  assert.doesNotMatch(html, /Grok 4.6/);
 });
 
 test("shell accepts an application composer and message renderer without forking the timeline", () => {
