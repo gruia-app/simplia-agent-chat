@@ -7,6 +7,7 @@ export * from "./persistence.js";
 export * from "./surfaces.js";
 export * from "./conformance.js";
 export * from "./domain-actions.js";
+export * from "./erasure.js";
 export * from "./limits.js";
 export * from "./suggestions.js";
 export * from "./timeline.js";

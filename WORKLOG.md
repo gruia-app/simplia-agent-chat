@@ -85,3 +85,10 @@ of react-lab. `pnpm check` pending final run.
 - `react/LimitNotice.tsx` + shell `limitNotice`/`onLimitAction`; blocking
   disables submit, draft editable. Copy key `limitNoticeLabel`.
 - Tests: 6 core + 6 react. Docs: CHAT_FIRST + INTEGRATION. Changeset minor x3.
+
+## Data lifecycle (2026-09-21T23:10Z)
+
+- `core/src/erasure.ts`: `purgeThreadFromState` removes thread-owned entities
+  (threads/turns/items/surfaces/interactions/usage) immutably; keeps stream
+  sequences + seenEventIds so late duplicates cannot resurrect. 3 tests.
+- Docs: ARCHITECTURE persistence section; changeset minor (root+core).

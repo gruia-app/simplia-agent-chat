@@ -74,6 +74,8 @@ Today, applications should keep one durable stream per thread. Unsequenced event
 
 The packages do not prescribe a database, message broker, IndexedDB, filesystem, or network client.
 
+Durable deletion stays application-owned for GDPR-style lifecycle flows. `purgeThreadFromState(state, threadId)` removes every thread-owned entity from the reduced state (thread, turns, items, surfaces, interactions, usage) without mutating the input or touching other threads; the persistence backend must delete journal/snapshot rows itself. Stream sequences and seen event ids are kept deliberately — they are replay guards that stop a late duplicated event from resurrecting a purged thread.
+
 ## Timeline paging
 
 Very long sessions should not mount every turn at once. `selectTimelinePage(state, threadId, { limit, cursor })` returns a bounded, chronological page of `TimelineEntry` (turn plus resolved items) in the same order as `selectThreadTurns`, so paging is deterministic under replay. The first call returns the newest `limit` turns — the window a chat view mounts first; each page's `nextCursor` selects the next older page. Cursors reference turn ids rather than offsets, so they remain valid while new turns append at the tail. Malformed, unknown or foreign-thread cursors fail closed with `invalid_cursor`. The contract carries data only: the virtualization library, row measurement and scroll anchoring remain host-owned decisions.
