@@ -1,24 +1,23 @@
 {
   "app": "simplia-agent-chat",
-  "updated_at": "2026-09-21T21:45:00Z",
-  "current": "Lane mission merged: PR #9 (fda086a), PR #10 (7732ba4). Cross-lane PR #11 merged (3285c1e): provider accounts coexist with chat-first/voice, unblocks insaidrv3 pin aa9a139",
+  "updated_at": "2026-09-21T22:20:00Z",
+  "current": "converged",
   "done": [
     "core: ChatSuggestionRegistry + resolveChatSuggestions + createAccountSnapshotDerive (empty-account/quota precedence)",
     "core: VoiceTransport port, VoiceUsageEvent metering, createVoiceSession, Deepgram ephemeral-token + WS proxy transports, scripted transport",
-    "react: SuggestionChips (roving tabindex) + ChatComposer draft prop + shell wiring (suggestions/onSuggestionSelect/composerDraft)",
-    "react: useVoiceCapture + VoiceButton push-to-talk (pointer+keyboard), MediaRecorder source injectable",
-    "example react-lab: home fixture with account-scenario switcher, suggestion chips, scripted voice + metering output",
-    "docs/CHAT_FIRST.md per-app recipe + INTEGRATION.md link",
-    "changeset chat-first-home-voice (minor, 3 packages)",
-    "tests: 20 core + 7 react new tests passing",
-    "core: provider field on VoiceSessionConfig/VoiceUsageEvent (default deepgram)",
-    "react: useVoiceCapture errorReason + VoiceButton error state, retryable",
-    "docs/CHAT_FIRST.md: error degradation matrix + FastAPI token/proxy reference examples + metering snake_case mapping",
-    "tests: provider metering + transport_failure/errorReason + mic-denial zero-byte event",
-    "PR #11 merged: feat/provider-accounts reconciled onto main (index.ts export union verified), CI green on fresh base after update-branch"
+    "react: SuggestionChips (roving tabindex) + ChatComposer draft prop + shell wiring",
+    "react: useVoiceCapture + VoiceButton push-to-talk, errorReason typed degradation, retryable",
+    "example react-lab: home fixture + account-scenario switcher + scripted voice + metering output",
+    "docs/CHAT_FIRST.md per-app recipe + backend token/proxy examples + degradation matrix",
+    "PR #9 (fda086a), PR #10 (7732ba4), PR #11 (3285c1e), PR #12 (ec94e8a) all merged to main",
+    "core: selectTimelinePage paged timeline contract — id-based cursors, fail-closed, deterministic under replay",
+    "react: theme=high-contrast preset — AAA body text, AA status, 3:1 borders/focus, contrast-tested",
+    "examples/headless-lab: framework-neutral Node rendering + suggestion demo with node --test coverage",
+    "docs/MIGRATION.md versioned breaking-change guide (semver/protocol/schemaVersion axes) + release-policy guard test",
+    "ROADMAP: all actionable pre-1.0 items completed"
   ],
   "blocked": [],
   "prs_open": [],
   "deploys_pending": [],
-  "notes": "Lane backlog complete: registry+voz+demo+doc all on main. Second wave (per-app adoption: gruia-workspace, gestor_gmail, seo, b2bweb, newsletter_hub, proposia) is coordinator-gated per WORK_BACKLOG; insaidrv3 now unblocked to adopt suggestions/voice alongside provider accounts."
+  "notes": "Lane converged. Only remaining roadmap item is live-provider conformance suites (Codex/LangChain/OpenAI-compatible) which needs real endpoints/credentials -> human decision. Second-wave app adoption is coordinator-gated per WORK_BACKLOG."
 }
