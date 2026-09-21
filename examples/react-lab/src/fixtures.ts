@@ -6,7 +6,7 @@ import {
   type SurfaceBlock,
 } from "simplia-agent-chat/core";
 
-export type LabFixtureKey = "acv2" | "contenido" | "data";
+export type LabFixtureKey = "acv2" | "contenido" | "data" | "home";
 
 interface LabFixture {
   key: LabFixtureKey;
@@ -20,6 +20,7 @@ const threadIdByFixture: Record<LabFixtureKey, string> = {
   acv2: "thread-acv2",
   contenido: "thread-contenido",
   data: "thread-data",
+  home: "thread-home",
 };
 
 function baseFixture(
@@ -66,6 +67,7 @@ function baseFixture(
 const acv2Thread = threadIdByFixture.acv2;
 const contenidoThread = threadIdByFixture.contenido;
 const dataThread = threadIdByFixture.data;
+const homeThread = threadIdByFixture.home;
 
 export const CHAT_LAB_FIXTURES: Record<LabFixtureKey, LabFixture> = {
   acv2: {
@@ -268,6 +270,13 @@ export const CHAT_LAB_FIXTURES: Record<LabFixtureKey, LabFixture> = {
       ],
       [],
     ),
+  },
+  home: {
+    key: "home",
+    label: "HOME",
+    description: "Chat-first home: suggestion chips and push-to-talk voice",
+    threadId: homeThread,
+    state: baseFixture("home", "Inicio", {}, [], []),
   },
 };
 

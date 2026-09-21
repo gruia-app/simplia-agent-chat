@@ -190,6 +190,10 @@ import { AgentChatShell, AgentChatWorkspace } from "simplia-agent-chat/react";
 
 Give the workspace a definite height from the host (`height: 100%` fills that host). On narrow containers, applications should usually mount one pane and own the switcher. If several panes stay mounted, they remain reachable in DOM order through the workspace body scroller.
 
+## Chat-first home and voice
+
+Mounting the shell as the post-login home with suggestion chips and push-to-talk voice is covered in [Chat-first home and voice](CHAT_FIRST.md). Suggestion contracts live in core (`createChatSuggestionRegistry`, `resolveChatSuggestions`, `createAccountSnapshotDerive`); voice input uses `useVoiceCapture` + `VoiceButton` over an app-owned `VoiceTransport` (ephemeral token or backend WebSocket proxy — the provider key never reaches the browser). Per-session `VoiceUsageEvent` metering is the per-tenant billing hook.
+
 ## Conformance helpers
 
 Import assertions from core, not from React, unless you intentionally re-export them:
