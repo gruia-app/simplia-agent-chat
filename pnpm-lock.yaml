@@ -19,6 +19,12 @@ importers:
         specifier: 3.0.0
         version: 3.0.0
 
+  examples/headless-lab:
+    dependencies:
+      simplia-agent-chat:
+        specifier: workspace:*
+        version: link:../..
+
   examples/react-lab:
     dependencies:
       react:
