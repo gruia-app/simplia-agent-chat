@@ -49,3 +49,14 @@ of react-lab. `pnpm check` pending final run.
 - Tests: provider in metering, transport failure reason + retry, mic denial
   emits zero-byte `error` event without opening the transport.
 - Changeset: `.changeset/voice-hardening-metering.md` (minor ×3).
+
+## Post-reset tick (2026-09-21T21:45Z)
+
+- Verified PR #9 (fda086a) and PR #10 (7732ba4) on origin/main; worktree clean.
+- PR #11 `merge/provider-accounts-into-main` (other lane, authored pre-PR#10):
+  reviewed non-dist diff — index.ts export union correct, sanitize/port contract
+  keeps secrets write-only. Branch was BEHIND with stale checks; ran
+  update-branch, fresh CI green (verify + git-consumer, Node 20/22), squash-merged
+  as 3285c1e. Unblocks insaidrv3 (pin aa9a139) to adopt suggestions/voice.
+- Lane mission items 1-4 (registry, voz, demo, doc) fully merged. No open PRs.
+  Second wave is coordinator-gated; no new in-lane backlog items defined.

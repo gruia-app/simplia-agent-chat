@@ -1,6 +1,6 @@
 # Theming
 
-The React package ships two palettes that share one semantic token set. The dark palette is the compatibility default. A warm-light preset supports a calm editorial operations workspace. Both are flat, restrained and application-owned: no gradients, glass, glow, deep shadows or provider branding.
+The React package ships three palettes that share one semantic token set. The dark palette is the compatibility default. A warm-light preset supports a calm editorial operations workspace. A high-contrast preset supports low-vision and harsh-light environments with AAA body text. All are flat, restrained and application-owned: no gradients, glass, glow, deep shadows or provider branding.
 
 Copy changes display labels only. Event IDs, decision values, status values and payloads stay protocol data.
 
@@ -44,9 +44,13 @@ Legacy `--sac-*` color variables remain the default inputs. Component rules cons
 
 Pass `theme="light"` to `AgentChatShell` or a standalone component. The same attribute is `[data-sac-theme="light"]` on `.sac-shell` or `.sac-theme`. Colors are warm paper, ink text and a restrained navy accent. Status, muted text, placeholders and primary controls meet WCAG 2.2 AA. Meaning never depends on color alone.
 
+## High-contrast preset
+
+Pass `theme="high-contrast"` (`[data-sac-theme="high-contrast"]`). Colors are pure black surfaces, white text, a bright blue accent and fully saturated status hues. Body, muted and strong text meet WCAG 2.2 AAA (≥ 7:1) on every surface; status and accent text meet AA (≥ 4.5:1); strong borders and the focus ring meet the 3:1 non-text minimum. Meaning never depends on color alone — status keeps its label and iconography.
+
 ## `.sac-theme`
 
-Standalone `ChatComposer`, `ChatTimeline`, `ChatRunStatus`, `PendingInteractions` and `SurfaceHost` add `.sac-theme` so they can be used outside the shell. Optional `theme="dark" | "light"` sets `data-sac-theme`. `AgentChatWorkspace` is also a theme root (`.sac-workspace`) with container name `sac-workspace`. It fills the host's height (`height: 100%`, `min-height: 0`) and does not set a viewport height. Nested `AgentChatShell` fills the conversation pane and drops its outer border; the shell keeps `container-name: sac-shell` for its own artifact-stage queries. Applications may also wrap a group of standalone components:
+Standalone `ChatComposer`, `ChatTimeline`, `ChatRunStatus`, `PendingInteractions` and `SurfaceHost` add `.sac-theme` so they can be used outside the shell. Optional `theme="dark" | "light" | "high-contrast"` sets `data-sac-theme`. `AgentChatWorkspace` is also a theme root (`.sac-workspace`) with container name `sac-workspace`. It fills the host's height (`height: 100%`, `min-height: 0`) and does not set a viewport height. Nested `AgentChatShell` fills the conversation pane and drops its outer border; the shell keeps `container-name: sac-shell` for its own artifact-stage queries. Applications may also wrap a group of standalone components:
 
 ```html
 <div class="sac-theme" data-sac-theme="light">

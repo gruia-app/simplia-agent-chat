@@ -73,3 +73,7 @@ Snapshot or journal read failures return `load_failed` with the original error i
 Today, applications should keep one durable stream per thread. Unsequenced events retain existing reducer semantics but are unsafe as durable records because they cannot participate in `after` high-water filtering.
 
 The packages do not prescribe a database, message broker, IndexedDB, filesystem, or network client.
+
+## Timeline paging
+
+Very long sessions should not mount every turn at once. `selectTimelinePage(state, threadId, { limit, cursor })` returns a bounded, chronological page of `TimelineEntry` (turn plus resolved items) in the same order as `selectThreadTurns`, so paging is deterministic under replay. The first call returns the newest `limit` turns — the window a chat view mounts first; each page's `nextCursor` selects the next older page. Cursors reference turn ids rather than offsets, so they remain valid while new turns append at the tail. Malformed, unknown or foreign-thread cursors fail closed with `invalid_cursor`. The contract carries data only: the virtualization library, row measurement and scroll anchoring remain host-owned decisions.

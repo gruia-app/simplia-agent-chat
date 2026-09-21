@@ -141,6 +141,40 @@ test("warm-light preset meets WCAG AA for text, muted, placeholder, status and c
   assert.match(css, /\.sac-composer-input::placeholder\s*\{\s*color:\s*var\(--sac-color-text-muted\)/);
 });
 
+test("high-contrast preset meets WCAG AAA body text and AA controls on every background", () => {
+  assert.match(css, /\[data-sac-theme="high-contrast"\]/);
+  const hc = blockAround("--sac-bg: #000000");
+  const canvas = variable("sac-bg", hc);
+  const surface = variable("sac-panel", hc);
+  const elevated = variable("sac-panel-alt", hc);
+  const subtle = variable("sac-deep", hc);
+  const interaction = variable("sac-interaction-bg", hc);
+  const muted = variable("sac-muted", hc);
+  const text = variable("sac-text", hc);
+  const strong = variable("sac-text-strong", hc);
+  const accentFg = variable("sac-blue-text", hc);
+  const successFg = variable("sac-green-text", hc);
+  const warningFg = variable("sac-amber-text", hc);
+  const dangerFg = variable("sac-red-text", hc);
+  const accentContrast = variable("sac-color-accent-contrast", hc);
+  const accentEmphasis = variable("sac-blue-strong", hc);
+  const focus = variable("sac-blue", hc);
+  const borderStrong = variable("sac-border-strong", hc);
+
+  for (const background of [canvas, surface, elevated, subtle, interaction]) {
+    assert.ok(contrast(muted, background) >= 7, `muted on ${background}`);
+    assert.ok(contrast(text, background) >= 7, `text on ${background}`);
+    assert.ok(contrast(strong, background) >= 7, `strong on ${background}`);
+    assert.ok(contrast(accentFg, background) >= 4.5, `accent on ${background}`);
+    assert.ok(contrast(successFg, background) >= 4.5, `success on ${background}`);
+    assert.ok(contrast(warningFg, background) >= 4.5, `warning on ${background}`);
+    assert.ok(contrast(dangerFg, background) >= 4.5, `danger on ${background}`);
+    assert.ok(contrast(borderStrong, background) >= 3, `strong border on ${background}`);
+  }
+  assert.ok(contrast(accentContrast, accentEmphasis) >= 4.5);
+  assert.ok(contrast(focus, canvas) >= 3, "focus ring on canvas");
+});
+
 test("literal colors are confined to overridable custom properties", () => {
   for (const line of css.split(/\r?\n/)) {
     if (/#[0-9a-fA-F]{3,8}/.test(line)) assert.match(line, /^\s*--sac-[a-z-]+:/);

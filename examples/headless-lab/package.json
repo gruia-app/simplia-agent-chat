@@ -1,0 +1,13 @@
+{
+  "name": "@simplia/agent-chat-headless-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node main.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "simplia-agent-chat": "workspace:*"
+  }
+}
