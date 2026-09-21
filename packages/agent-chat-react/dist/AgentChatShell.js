@@ -4,6 +4,7 @@ import { useId, useMemo, useRef, useState } from "react";
 import { selectActiveTurn, selectThreadRunState, selectThreadSurfaces, } from "simplia-agent-chat/core";
 import { ChatComposer } from "./ChatComposer.js";
 import { ChatRunStatus } from "./ChatRunStatus.js";
+import { LimitNoticeBar } from "./LimitNotice.js";
 import { ChatTimeline } from "./ChatTimeline.js";
 import { resolveAgentChatCopy, sacThemeAttributes, } from "./copy.js";
 import { PendingInteractions } from "./PendingInteractions.js";
@@ -21,7 +22,7 @@ function DefaultArtifactStage({ surfaces, surfaceRegistry, onSurfaceAction, labe
     const headingId = useId();
     return (_jsxs("aside", { className: "sac-artifact-stage", "aria-labelledby": headingId, children: [_jsx("div", { className: "sac-artifact-stage-header", children: _jsx("h3", { id: headingId, children: label }) }), _jsx("div", { className: "sac-artifact-stage-scroll", children: surfaces.map((surface) => (_jsx(SurfaceHost, { block: surface, registry: surfaceRegistry, copy: copy, ...(onSurfaceAction ? { onAction: onSurfaceAction } : {}) }, surface.id))) })] }));
 }
-export function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy = false, toolbar, contextRail, emptyLabel, composer, renderMessage, artifactStageLabel, renderArtifactStage, renderFullscreenSurfaces, copy, theme, headerLabel, onInterrupt, composerActions, renderRunStatus, suggestions, onSuggestionSelect, suggestionsAriaLabel, composerDraft, }) {
+export function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy = false, toolbar, contextRail, emptyLabel, composer, renderMessage, artifactStageLabel, renderArtifactStage, renderFullscreenSurfaces, copy, theme, headerLabel, onInterrupt, composerActions, renderRunStatus, suggestions, onSuggestionSelect, suggestionsAriaLabel, composerDraft, limitNotice, onLimitAction, }) {
     const resolvedCopy = useMemo(() => resolveAgentChatCopy(copy), [copy]);
     const protocolRunState = useMemo(() => selectThreadRunState(state, threadId), [state, threadId]);
     const runState = useMemo(() => (busy && (protocolRunState.phase === "idle" || protocolRunState.phase === "completed")
@@ -75,6 +76,6 @@ export function AgentChatShell({ state, threadId, surfaceRegistry, title, subtit
                             ? renderArtifactStage(slotProps)
                             : (_jsx(DefaultArtifactStage, { ...slotProps, label: stageLabel, copy: resolvedCopy })) })] })) : (chatStage), renderFullscreenSurfaces && fullscreenSurfaces.length > 0
                 ? renderFullscreenSurfaces(surfaceSlotProps(fullscreenSurfaces, surfaceRegistry, onSurfaceAction))
-                : null, _jsxs("div", { className: "sac-input-rail", children: [runStatus, _jsx(PendingInteractions, { interactions: interactions, onResolve: onResolveInteraction, copy: resolvedCopy }), suggestions && suggestions.length > 0 ? (_jsx(SuggestionChips, { suggestions: suggestions, onSelect: onSuggestion, ariaLabel: suggestionsAriaLabel ?? resolvedCopy.suggestionsLabel, ...(theme ? { theme } : {}) })) : null, composer ?? (_jsx(ChatComposer, { onSubmit: onSubmit, ariaLabel: composerAriaLabel, copy: resolvedCopy, busy: busy, ...(composerPlaceholder !== undefined ? { placeholder: composerPlaceholder } : {}), ...(composerActions !== undefined ? { actions: composerActions } : {}), ...(effectiveDraft !== undefined ? { draft: effectiveDraft } : {}) }))] })] }));
+                : null, _jsxs("div", { className: "sac-input-rail", children: [runStatus, _jsx(PendingInteractions, { interactions: interactions, onResolve: onResolveInteraction, copy: resolvedCopy }), suggestions && suggestions.length > 0 ? (_jsx(SuggestionChips, { suggestions: suggestions, onSelect: onSuggestion, ariaLabel: suggestionsAriaLabel ?? resolvedCopy.suggestionsLabel, ...(theme ? { theme } : {}) })) : null, limitNotice ? (_jsx(LimitNoticeBar, { notice: limitNotice, onAction: onLimitAction, ariaLabel: resolvedCopy.limitNoticeLabel, ...(theme ? { theme } : {}) })) : null, composer ?? (_jsx(ChatComposer, { onSubmit: onSubmit, ariaLabel: composerAriaLabel, copy: resolvedCopy, busy: busy, disabled: limitNotice !== undefined && limitNotice.blocking !== false, ...(composerPlaceholder !== undefined ? { placeholder: composerPlaceholder } : {}), ...(composerActions !== undefined ? { actions: composerActions } : {}), ...(effectiveDraft !== undefined ? { draft: effectiveDraft } : {}) }))] })] }));
 }
 //# sourceMappingURL=AgentChatShell.js.map

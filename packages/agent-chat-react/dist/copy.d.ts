@@ -42,6 +42,7 @@ export interface AgentChatCopy {
     readonly interruptDescription: string;
     readonly messageRendererFallback: string;
     readonly suggestionsLabel: string;
+    readonly limitNoticeLabel: string;
     readonly voiceStartLabel: string;
     readonly voiceStopLabel: string;
     readonly voiceConnectingLabel: string;

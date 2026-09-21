@@ -44,6 +44,7 @@ export interface AgentChatCopy {
   readonly interruptDescription: string;
   readonly messageRendererFallback: string;
   readonly suggestionsLabel: string;
+  readonly limitNoticeLabel: string;
   readonly voiceStartLabel: string;
   readonly voiceStopLabel: string;
   readonly voiceConnectingLabel: string;
@@ -129,6 +130,7 @@ export const defaultAgentChatCopy: AgentChatCopy = Object.freeze({
   interruptDescription: "Requests that the provider stop the current turn.",
   messageRendererFallback: "This message could not be displayed.",
   suggestionsLabel: "Suggested actions",
+  limitNoticeLabel: "Usage limit",
   voiceStartLabel: "Hold to talk",
   voiceStopLabel: "Release to finish",
   voiceConnectingLabel: "Connecting microphone…",

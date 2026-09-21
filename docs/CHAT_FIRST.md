@@ -283,9 +283,28 @@ with zero `audioBytes` when the transport never opened, so quota systems can
 bill zero and still observe failure rates. The lab prints it into its status
 output.
 
+### Chat usage metering and limit notices
+
+Chat turns meter through `usage.updated` events reduced into
+`state.usageByThread` (cumulative counters). `watchChatUsage(runtime, emit)`
+emits one `ChatUsageMeterEvent` per thread whose usage changed —
+`{ threadId, organizationId, delta, usage }` — so the quota pipeline gets a
+per-tenant delta without re-diffing counters. `diffChatUsage` and
+`collectUsageMeterEvents` are the pure building blocks for batched or
+pull-based pipelines. `organizationId` on the thread is the tenant key
+(`organization_id` in snake_case pipelines).
+
+When a quota check fails, the app passes `limitNotice` to `AgentChatShell`:
+a typed `ChatLimitNotice` (`quota_exceeded` | `plan_required` | `rate_limited`
+| `custom`) rendered as an alert banner at the exact point of the limit.
+`blocking !== false` disables submitting while the notice is shown — the
+draft stays editable so no typed text is lost. The optional `actionLabel` CTA
+reports the notice to `onLimitAction`; the host owns where the upgrade or
+settings flow lives. Validate untrusted input with `normalizeChatLimitNotice`.
+
 ## Accessibility and copy
 
 Chips and the voice button are localized through `AgentChatCopy`:
-`suggestionsLabel`, `voiceStartLabel`, `voiceStopLabel`,
+`suggestionsLabel`, `limitNoticeLabel`, `voiceStartLabel`, `voiceStopLabel`,
 `voiceConnectingLabel`, `voiceUnsupportedLabel`, `voiceErrorLabel`.
 `suggestionsAriaLabel` overrides the chip group label on the shell.

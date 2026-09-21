@@ -7,6 +7,7 @@ import {
   selectThreadSurfaces,
   type ChatState,
   type ChatItem,
+  type ChatLimitNotice,
   type ChatSuggestion,
   type ChatTurn,
   type JsonValue,
@@ -17,6 +18,7 @@ import {
 } from "simplia-agent-chat/core";
 import { ChatComposer, type ChatComposerDraft, type ChatComposerProps } from "./ChatComposer.js";
 import { ChatRunStatus } from "./ChatRunStatus.js";
+import { LimitNoticeBar } from "./LimitNotice.js";
 import { ChatTimeline } from "./ChatTimeline.js";
 import {
   resolveAgentChatCopy,
@@ -76,6 +78,13 @@ export interface AgentChatShellProps {
   suggestionsAriaLabel?: string | undefined;
   /** Host-owned draft injection (e.g. voice transcripts). Wins over suggestion drafts. */
   composerDraft?: ChatComposerDraft | undefined;
+  /**
+   * Limit-reached notice rendered at the point of the limit, above the
+   * composer. `blocking !== false` disables submitting while shown.
+   */
+  limitNotice?: ChatLimitNotice | undefined;
+  /** Host action for the notice CTA (e.g. open billing/upgrade). */
+  onLimitAction?: ((notice: ChatLimitNotice) => void) | undefined;
 }
 
 function surfaceSlotProps(
@@ -151,6 +160,8 @@ export function AgentChatShell({
   onSuggestionSelect,
   suggestionsAriaLabel,
   composerDraft,
+  limitNotice,
+  onLimitAction,
 }: AgentChatShellProps) {
   const resolvedCopy = useMemo(() => resolveAgentChatCopy(copy), [copy]);
   const protocolRunState = useMemo(() => selectThreadRunState(state, threadId), [state, threadId]);
@@ -290,12 +301,21 @@ export function AgentChatShell({
             {...(theme ? { theme } : {})}
           />
         ) : null}
+        {limitNotice ? (
+          <LimitNoticeBar
+            notice={limitNotice}
+            onAction={onLimitAction}
+            ariaLabel={resolvedCopy.limitNoticeLabel}
+            {...(theme ? { theme } : {})}
+          />
+        ) : null}
         {composer ?? (
           <ChatComposer
             onSubmit={onSubmit}
             ariaLabel={composerAriaLabel}
             copy={resolvedCopy}
             busy={busy}
+            disabled={limitNotice !== undefined && limitNotice.blocking !== false}
             {...(composerPlaceholder !== undefined ? { placeholder: composerPlaceholder } : {})}
             {...(composerActions !== undefined ? { actions: composerActions } : {})}
             {...(effectiveDraft !== undefined ? { draft: effectiveDraft } : {})}

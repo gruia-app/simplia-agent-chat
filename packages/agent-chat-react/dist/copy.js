@@ -67,6 +67,7 @@ export const defaultAgentChatCopy = Object.freeze({
     interruptDescription: "Requests that the provider stop the current turn.",
     messageRendererFallback: "This message could not be displayed.",
     suggestionsLabel: "Suggested actions",
+    limitNoticeLabel: "Usage limit",
     voiceStartLabel: "Hold to talk",
     voiceStopLabel: "Release to finish",
     voiceConnectingLabel: "Connecting microphone…",

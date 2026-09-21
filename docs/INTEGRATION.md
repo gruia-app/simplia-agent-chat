@@ -221,7 +221,7 @@ Give the workspace a definite height from the host (`height: 100%` fills that ho
 
 ## Chat-first home and voice
 
-Mounting the shell as the post-login home with suggestion chips and push-to-talk voice is covered in [Chat-first home and voice](CHAT_FIRST.md). Suggestion contracts live in core (`createChatSuggestionRegistry`, `resolveChatSuggestions`, `createAccountSnapshotDerive`); voice input uses `useVoiceCapture` + `VoiceButton` over an app-owned `VoiceTransport` (ephemeral token or backend WebSocket proxy — the provider key never reaches the browser). Per-session `VoiceUsageEvent` metering is the per-tenant billing hook.
+Mounting the shell as the post-login home with suggestion chips and push-to-talk voice is covered in [Chat-first home and voice](CHAT_FIRST.md). Suggestion contracts live in core (`createChatSuggestionRegistry`, `resolveChatSuggestions`, `createAccountSnapshotDerive`); voice input uses `useVoiceCapture` + `VoiceButton` over an app-owned `VoiceTransport` (ephemeral token or backend WebSocket proxy — the provider key never reaches the browser). Per-session `VoiceUsageEvent` metering is the per-tenant billing hook; `watchChatUsage` emits the same per-tenant delta (`organizationId`) for chat turns, and the shell's `limitNotice` + `onLimitAction` props render the blocking upgrade prompt at the point of the limit.
 
 ## Conformance helpers
 

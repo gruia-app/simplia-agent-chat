@@ -60,3 +60,28 @@ of react-lab. `pnpm check` pending final run.
   as 3285c1e. Unblocks insaidrv3 (pin aa9a139) to adopt suggestions/voice.
 - Lane mission items 1-4 (registry, voz, demo, doc) fully merged. No open PRs.
   Second wave is coordinator-gated; no new in-lane backlog items defined.
+
+## Gap-burn tick (2026-09-21T22:20Z)
+
+- PR #12 merged as ec94e8a (rebase over 3285c1e, CI green):
+  - `core/src/timeline.ts`: `selectTimelinePage` + `TimelinePage`/`TimelineEntry`,
+    `turn:`-prefixed id cursors (stable under tail appends), fail-closed
+    `invalid_cursor`, limit clamp [1,500], items resolved per turn.
+  - `react`: `AgentChatTheme` + `"high-contrast"` preset; AAA text / AA status /
+    3:1 non-text contrast asserted in styles.test.mjs.
+  - `examples/headless-lab`: framework-neutral consumer (replay -> page -> escaped
+    HTML + suggestions), 5 tests via `pnpm -r test`.
+  - `docs/MIGRATION.md` + release-policy guard test pinning CHAT_PROTOCOL_VERSION.
+- Roadmap pre-1.0 actionable items all completed. Remaining: live provider
+  conformance (needs credentials) -> DECISION. Lane converged.
+
+## Limits/metering stream (2026-09-21T22:55Z)
+
+- `core/src/limits.ts`: `ChatLimitNotice` (`quota_exceeded`/`plan_required`/
+  `rate_limited`/`custom`) + `normalizeChatLimitNotice` fail-closed.
+- `core/src/usage-meter.ts`: `diffChatUsage`, `collectUsageMeterEvents`,
+  `watchChatUsage` — one `ChatUsageMeterEvent` per changed thread carrying
+  `{threadId, organizationId, delta, usage}`; chat analogue of VoiceUsageEvent.
+- `react/LimitNotice.tsx` + shell `limitNotice`/`onLimitAction`; blocking
+  disables submit, draft editable. Copy key `limitNoticeLabel`.
+- Tests: 6 core + 6 react. Docs: CHAT_FIRST + INTEGRATION. Changeset minor x3.
