@@ -1,7 +1,7 @@
 {
   "app": "simplia-agent-chat",
-  "updated_at": "2026-09-21T12:30:00Z",
-  "current": "Mission complete: chat-first home + Deepgram voice shipped in PR #9 (ready for review)",
+  "updated_at": "2026-09-21T12:45:00Z",
+  "current": "Mission complete: PR #9 merged to main as fda086a",
   "done": [
     "core: ChatSuggestionRegistry + resolveChatSuggestions + createAccountSnapshotDerive (empty-account/quota precedence)",
     "core: VoiceTransport port, VoiceUsageEvent metering, createVoiceSession, Deepgram ephemeral-token + WS proxy transports, scripted transport",
@@ -13,7 +13,7 @@
     "tests: 20 core + 7 react new tests passing"
   ],
   "blocked": [],
-  "prs_open": ["https://github.com/gruia-app/simplia-agent-chat/pull/9"],
+  "prs_open": [],
   "deploys_pending": [],
   "notes": "Provider key never in browser: ephemeral token or app-backend WS proxy. Billing per app via meter hook -> app quota system. Defaults nova-3/multi."
 }
