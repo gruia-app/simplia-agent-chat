@@ -41,6 +41,12 @@ export interface AgentChatCopy {
     readonly interruptError: string;
     readonly interruptDescription: string;
     readonly messageRendererFallback: string;
+    readonly suggestionsLabel: string;
+    readonly voiceStartLabel: string;
+    readonly voiceStopLabel: string;
+    readonly voiceConnectingLabel: string;
+    readonly voiceUnsupportedLabel: string;
+    readonly voiceErrorLabel: string;
 }
 export type AgentChatCopyOverrides = Partial<AgentChatCopy>;
 export declare const defaultAgentChatCopy: AgentChatCopy;

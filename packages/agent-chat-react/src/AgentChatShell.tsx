@@ -1,12 +1,13 @@
 "use client";
 
-import { useId, useMemo, type ReactNode } from "react";
+import { useId, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   selectActiveTurn,
   selectThreadRunState,
   selectThreadSurfaces,
   type ChatState,
   type ChatItem,
+  type ChatSuggestion,
   type ChatTurn,
   type JsonValue,
   type PendingInteraction,
@@ -14,7 +15,7 @@ import {
   type SurfaceBlock,
   type ThreadRunState,
 } from "simplia-agent-chat/core";
-import { ChatComposer, type ChatComposerProps } from "./ChatComposer.js";
+import { ChatComposer, type ChatComposerDraft, type ChatComposerProps } from "./ChatComposer.js";
 import { ChatRunStatus } from "./ChatRunStatus.js";
 import { ChatTimeline } from "./ChatTimeline.js";
 import {
@@ -25,6 +26,7 @@ import {
   type AgentChatTheme,
 } from "./copy.js";
 import { PendingInteractions } from "./PendingInteractions.js";
+import { SuggestionChips } from "./SuggestionChips.js";
 import { ReactSurfaceRegistry, SurfaceHost } from "./surface-registry.js";
 import { useFollowScroll } from "./use-follow-scroll.js";
 
@@ -67,6 +69,13 @@ export interface AgentChatShellProps {
   onInterrupt?: ((turn: ChatTurn) => void | Promise<void>) | undefined;
   composerActions?: ReactNode | undefined;
   renderRunStatus?: ((props: AgentChatRunStatusSlotProps) => ReactNode) | undefined;
+  /** Chat-first home chips rendered above the composer. */
+  suggestions?: readonly ChatSuggestion[] | undefined;
+  /** Notified after a suggestion is staged into the composer draft. */
+  onSuggestionSelect?: ((suggestion: ChatSuggestion) => void) | undefined;
+  suggestionsAriaLabel?: string | undefined;
+  /** Host-owned draft injection (e.g. voice transcripts). Wins over suggestion drafts. */
+  composerDraft?: ChatComposerDraft | undefined;
 }
 
 function surfaceSlotProps(
@@ -138,6 +147,10 @@ export function AgentChatShell({
   onInterrupt,
   composerActions,
   renderRunStatus,
+  suggestions,
+  onSuggestionSelect,
+  suggestionsAriaLabel,
+  composerDraft,
 }: AgentChatShellProps) {
   const resolvedCopy = useMemo(() => resolveAgentChatCopy(copy), [copy]);
   const protocolRunState = useMemo(() => selectThreadRunState(state, threadId), [state, threadId]);
@@ -197,6 +210,17 @@ export function AgentChatShell({
         />
       )
       : null;
+
+  const draftRevisionRef = useRef(0);
+  const [suggestionDraft, setSuggestionDraft] = useState<ChatComposerDraft | undefined>(undefined);
+  const effectiveDraft = composerDraft ?? suggestionDraft;
+  const onSuggestion = (suggestion: ChatSuggestion) => {
+    if (composerDraft === undefined) {
+      draftRevisionRef.current += 1;
+      setSuggestionDraft({ value: suggestion.prompt, revision: draftRevisionRef.current });
+    }
+    onSuggestionSelect?.(suggestion);
+  };
 
   const chatStage = (
     <div className="sac-chat-stage">
@@ -258,6 +282,14 @@ export function AgentChatShell({
           onResolve={onResolveInteraction}
           copy={resolvedCopy}
         />
+        {suggestions && suggestions.length > 0 ? (
+          <SuggestionChips
+            suggestions={suggestions}
+            onSelect={onSuggestion}
+            ariaLabel={suggestionsAriaLabel ?? resolvedCopy.suggestionsLabel}
+            {...(theme ? { theme } : {})}
+          />
+        ) : null}
         {composer ?? (
           <ChatComposer
             onSubmit={onSubmit}
@@ -266,6 +298,7 @@ export function AgentChatShell({
             busy={busy}
             {...(composerPlaceholder !== undefined ? { placeholder: composerPlaceholder } : {})}
             {...(composerActions !== undefined ? { actions: composerActions } : {})}
+            {...(effectiveDraft !== undefined ? { draft: effectiveDraft } : {})}
           />
         )}
       </div>

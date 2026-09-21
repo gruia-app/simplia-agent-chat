@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
-import { type ChatState, type ChatItem, type ChatTurn, type JsonValue, type PendingInteraction, type SurfaceActionRef, type SurfaceBlock, type ThreadRunState } from "simplia-agent-chat/core";
-import { type ChatComposerProps } from "./ChatComposer.js";
+import { type ChatState, type ChatItem, type ChatSuggestion, type ChatTurn, type JsonValue, type PendingInteraction, type SurfaceActionRef, type SurfaceBlock, type ThreadRunState } from "simplia-agent-chat/core";
+import { type ChatComposerDraft, type ChatComposerProps } from "./ChatComposer.js";
 import { type AgentChatCopy, type AgentChatCopyOverrides, type AgentChatTheme } from "./copy.js";
 import { ReactSurfaceRegistry } from "./surface-registry.js";
 export interface AgentChatSurfaceSlotProps {
@@ -40,6 +40,13 @@ export interface AgentChatShellProps {
     onInterrupt?: ((turn: ChatTurn) => void | Promise<void>) | undefined;
     composerActions?: ReactNode | undefined;
     renderRunStatus?: ((props: AgentChatRunStatusSlotProps) => ReactNode) | undefined;
+    /** Chat-first home chips rendered above the composer. */
+    suggestions?: readonly ChatSuggestion[] | undefined;
+    /** Notified after a suggestion is staged into the composer draft. */
+    onSuggestionSelect?: ((suggestion: ChatSuggestion) => void) | undefined;
+    suggestionsAriaLabel?: string | undefined;
+    /** Host-owned draft injection (e.g. voice transcripts). Wins over suggestion drafts. */
+    composerDraft?: ChatComposerDraft | undefined;
 }
-export declare function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy, toolbar, contextRail, emptyLabel, composer, renderMessage, artifactStageLabel, renderArtifactStage, renderFullscreenSurfaces, copy, theme, headerLabel, onInterrupt, composerActions, renderRunStatus, }: AgentChatShellProps): import("react").JSX.Element;
+export declare function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy, toolbar, contextRail, emptyLabel, composer, renderMessage, artifactStageLabel, renderArtifactStage, renderFullscreenSurfaces, copy, theme, headerLabel, onInterrupt, composerActions, renderRunStatus, suggestions, onSuggestionSelect, suggestionsAriaLabel, composerDraft, }: AgentChatShellProps): import("react").JSX.Element;
 //# sourceMappingURL=AgentChatShell.d.ts.map

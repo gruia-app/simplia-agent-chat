@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -16,6 +17,12 @@ import {
   type AgentChatTheme,
 } from "./copy.js";
 
+export interface ChatComposerDraft {
+  value: string;
+  /** Bumped by the host to adopt `value`; equal revisions are ignored. */
+  revision: number;
+}
+
 export interface ChatComposerProps {
   onSubmit: (value: string) => void | Promise<void>;
   ariaLabel: string;
@@ -27,6 +34,8 @@ export interface ChatComposerProps {
   initialValue?: string | undefined;
   actions?: ReactNode | undefined;
   onDraftChange?: ((value: string) => void) | undefined;
+  /** External draft injection (suggestions, voice transcripts). */
+  draft?: ChatComposerDraft | undefined;
   copy?: AgentChatCopyOverrides | undefined;
   theme?: AgentChatTheme | undefined;
 }
@@ -42,6 +51,7 @@ export function ChatComposer({
   initialValue = "",
   actions,
   onDraftChange,
+  draft,
   copy,
   theme,
 }: ChatComposerProps) {
@@ -64,6 +74,13 @@ export function ChatComposer({
     setValue(next);
     onDraftChange?.(next);
   }, [onDraftChange]);
+
+  const draftRevisionRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (draft === undefined || draft.revision === draftRevisionRef.current) return;
+    draftRevisionRef.current = draft.revision;
+    updateDraft(draft.value);
+  }, [draft, updateDraft]);
 
   const submit = useCallback(() => {
     const snapshot = valueRef.current.trim();
