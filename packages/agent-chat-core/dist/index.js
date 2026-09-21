@@ -7,6 +7,8 @@ export * from "./persistence.js";
 export * from "./surfaces.js";
 export * from "./conformance.js";
 export * from "./domain-actions.js";
+export * from "./suggestions.js";
+export * from "./voice.js";
 export * from "./adapters/codex.js";
 export * from "./adapters/langchain.js";
 export * from "./adapters/openai-compatible.js";
