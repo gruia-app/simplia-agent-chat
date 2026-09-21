@@ -1,7 +1,7 @@
 {
   "app": "simplia-agent-chat",
-  "updated_at": "2026-09-21T23:10:00Z",
-  "current": "limits/metering merged (PR #13) + thread erasure pending PR",
+  "updated_at": "2026-09-21T23:25:00Z",
+  "current": "converged",
   "done": [
     "core: ChatSuggestionRegistry + resolveChatSuggestions + createAccountSnapshotDerive (empty-account/quota precedence)",
     "core: VoiceTransport port, VoiceUsageEvent metering, createVoiceSession, Deepgram ephemeral-token + WS proxy transports, scripted transport",
@@ -24,5 +24,5 @@
   "blocked": [],
   "prs_open": [],
   "deploys_pending": [],
-  "notes": "Backlog stream 2 (limits/metering E2E) applied to the library: typed limit banner at point of limit + tenant usage deltas. Streams 1/3/4/6/7/8 are app-side (per-app repos), not library code."
+  "notes": "PRs merged: #9 fda086a, #10 7732ba4, #11 3285c1e, #12 ec94e8a, #13 100eddf, #14 7d4da79. Backlog streams applied where they touch the library: limits/metering (limitNotice + watchChatUsage), analytics hooks (tenant usage deltas), data lifecycle (purgeThreadFromState), onboarding (chat-first home+suggestions). Streams 3/4/6/8 and dogfood E2E are app-side (other repos/credentials) or coordinator-gated (second wave). Live provider conformance still needs human credentials."
 }

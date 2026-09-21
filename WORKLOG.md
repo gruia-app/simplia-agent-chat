@@ -92,3 +92,11 @@ of react-lab. `pnpm check` pending final run.
   (threads/turns/items/surfaces/interactions/usage) immutably; keeps stream
   sequences + seenEventIds so late duplicates cannot resurrect. 3 tests.
 - Docs: ARCHITECTURE persistence section; changeset minor (root+core).
+
+## Turn close (2026-09-21T23:25Z)
+
+- PR #13 merged (100eddf), PR #14 merged (7d4da79). All rebases were
+  pre-squash-history conflicts; skipped superseded chore/patch commits,
+  verified delta-only diffs, CI green before each merge.
+- Lane converged again: library-applicable backlog streams are merged; the
+  rest is per-app code or coordinator-gated.
