@@ -567,6 +567,47 @@
 .sac-suggestion-chip:hover { border-color: var(--sac-color-text-muted); background: var(--sac-color-control-hover); }
 .sac-suggestion-chip:focus-visible { outline: 2px solid var(--sac-color-focus); outline-offset: 1px; }
 
+.sac-limit-notice {
+  width: min(100%, 52rem);
+  margin: 0 auto 0.45rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  border: 1px solid var(--sac-color-warning);
+  border-radius: var(--sac-radius-control);
+  background: var(--sac-color-interaction);
+  color: var(--sac-color-text);
+  padding: 0.45rem 0.7rem;
+  font-family: var(--sac-font-body);
+}
+
+.sac-limit-notice-message {
+  margin: 0;
+  min-width: 0;
+  color: var(--sac-color-text);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.sac-limit-notice-action {
+  flex-shrink: 0;
+  min-height: 2.5rem;
+  border: 1px solid var(--sac-color-warning);
+  border-radius: var(--sac-radius-compact);
+  background: var(--sac-color-surface-elevated);
+  color: var(--sac-color-text-strong);
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  font-family: var(--sac-font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sac-limit-notice-action:hover { background: var(--sac-color-control-hover); }
+.sac-limit-notice-action:focus-visible { outline: 2px solid var(--sac-color-focus); outline-offset: 1px; }
+
 .sac-voice-button {
   display: inline-flex;
   align-items: center;

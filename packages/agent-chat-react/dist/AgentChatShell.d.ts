@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { type ChatState, type ChatItem, type ChatSuggestion, type ChatTurn, type JsonValue, type PendingInteraction, type SurfaceActionRef, type SurfaceBlock, type ThreadRunState } from "simplia-agent-chat/core";
+import { type ChatState, type ChatItem, type ChatLimitNotice, type ChatSuggestion, type ChatTurn, type JsonValue, type PendingInteraction, type SurfaceActionRef, type SurfaceBlock, type ThreadRunState } from "simplia-agent-chat/core";
 import { type ChatComposerDraft, type ChatComposerProps } from "./ChatComposer.js";
 import { type AgentChatCopy, type AgentChatCopyOverrides, type AgentChatTheme } from "./copy.js";
 import { ReactSurfaceRegistry } from "./surface-registry.js";
@@ -47,6 +47,13 @@ export interface AgentChatShellProps {
     suggestionsAriaLabel?: string | undefined;
     /** Host-owned draft injection (e.g. voice transcripts). Wins over suggestion drafts. */
     composerDraft?: ChatComposerDraft | undefined;
+    /**
+     * Limit-reached notice rendered at the point of the limit, above the
+     * composer. `blocking !== false` disables submitting while shown.
+     */
+    limitNotice?: ChatLimitNotice | undefined;
+    /** Host action for the notice CTA (e.g. open billing/upgrade). */
+    onLimitAction?: ((notice: ChatLimitNotice) => void) | undefined;
 }
-export declare function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy, toolbar, contextRail, emptyLabel, composer, renderMessage, artifactStageLabel, renderArtifactStage, renderFullscreenSurfaces, copy, theme, headerLabel, onInterrupt, composerActions, renderRunStatus, suggestions, onSuggestionSelect, suggestionsAriaLabel, composerDraft, }: AgentChatShellProps): import("react").JSX.Element;
+export declare function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy, toolbar, contextRail, emptyLabel, composer, renderMessage, artifactStageLabel, renderArtifactStage, renderFullscreenSurfaces, copy, theme, headerLabel, onInterrupt, composerActions, renderRunStatus, suggestions, onSuggestionSelect, suggestionsAriaLabel, composerDraft, limitNotice, onLimitAction, }: AgentChatShellProps): import("react").JSX.Element;
 //# sourceMappingURL=AgentChatShell.d.ts.map
