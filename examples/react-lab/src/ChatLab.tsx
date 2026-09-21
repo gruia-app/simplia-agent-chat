@@ -103,7 +103,7 @@ export function ChatLab() {
     organizationId: "simplia-lab",
     meter: (event) => {
       setLastAction(
-        `voice usage ${event.audioBytes}B · ${event.durationMs}ms · tenant=${event.tenantId ?? "n/a"} · ${event.endReason}`,
+        `voice usage ${event.provider} · ${event.audioBytes}B · ${event.durationMs}ms · tenant=${event.tenantId ?? "n/a"} · ${event.endReason}`,
       );
     },
     onTranscript: (frame) => {
@@ -219,7 +219,9 @@ export function ChatLab() {
                       ? (voiceCapture.interim || "Grabando…")
                       : voiceCapture.status === "starting"
                         ? "Conectando…"
-                        : "Mantén para hablar"}
+                        : voiceCapture.status === "error"
+                          ? `Voz no disponible (${voiceCapture.errorReason ?? "error"}) — escribe tu mensaje`
+                          : "Mantén para hablar"}
                   </span>
                 </>
               ) : (

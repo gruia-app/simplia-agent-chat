@@ -13,15 +13,18 @@ export interface VoiceAudioSource {
 }
 export type VoiceAudioSourceFactory = (handlers: VoiceAudioSourceHandlers) => VoiceAudioSource | Promise<VoiceAudioSource>;
 export type VoiceCaptureStatus = "idle" | "starting" | "recording" | "error";
+/** Every reason a capture can fail. Maps 1:1 onto UI degradation copy. */
+export type VoiceCaptureErrorReason = VoiceTransportErrorReason | "capture_failed" | "unsupported";
 export interface UseVoiceCaptureOptions {
     transport: VoiceTransport;
     meter?: VoiceUsageMeter | undefined;
     model?: string | undefined;
     language?: string | undefined;
+    provider?: string | undefined;
     tenantId?: string | undefined;
     organizationId?: string | undefined;
     onTranscript?: ((frame: VoiceTranscriptFrame) => void) | undefined;
-    onError?: ((reason: VoiceTransportErrorReason | "capture_failed" | "unsupported", error?: unknown) => void) | undefined;
+    onError?: ((reason: VoiceCaptureErrorReason, error?: unknown) => void) | undefined;
     /** Injectable for tests; defaults to `createMediaRecorderSource()`. */
     createSource?: VoiceAudioSourceFactory | undefined;
     /** Capability override for tests/SSR. */
@@ -34,6 +37,8 @@ export interface VoiceCapture {
     transcript: string;
     /** Latest non-final transcript frame while recording. */
     interim: string;
+    /** Why the capture entered `error` status; undefined until it fails. */
+    errorReason: VoiceCaptureErrorReason | undefined;
     start: () => void;
     stop: () => void;
 }
