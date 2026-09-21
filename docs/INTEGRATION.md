@@ -4,6 +4,35 @@
 
 Use an `AgentProviderPort` when the backend has durable sessions, tools, approvals or steering. Use a `ChatCompletionPort` for an OpenAI-compatible response stream. Do not emulate unsupported agent capabilities in the UI.
 
+For account management, implement `ProviderConnectionPort` in the host server.
+The port deliberately separates public catalog/identity data from write-only
+credential input. A standalone product can back it with its own encrypted vault;
+an ACV2 installation can use a bridge adapter implementing the same interface.
+Neither choice changes the React integration.
+
+```tsx
+import { ProviderAccountPicker } from "simplia-agent-chat/react";
+
+<ProviderAccountPicker
+  connections={connections}
+  models={models}
+  connectionId={selection.connectionId}
+  modelId={selection.modelId}
+  connectionLabel="Cuenta de IA"
+  modelLabel="Modelo"
+  connectLabel="Conectar proveedor"
+  onConnectionChange={setConnectionId}
+  onModelChange={setModelId}
+  onConnect={() => openProviderSettings()}
+/>
+```
+
+The browser receives `ProviderConnectionSummary` only. Never put API keys,
+OAuth tokens, CLI auth files, encrypted blobs, or login challenges into chat
+events, picker props, analytics, or local storage. Persist an explicit account
+and model per conversation. If that selection is unavailable, report it instead
+of silently routing to another provider.
+
 ## Normalize before rendering
 
 Provider SDK or transport events should pass through a `ChatTransportAdapter`. Persist or stream normalized `ChatEvent` envelopes, validate them, then reduce them with `reduceChatEvent`.

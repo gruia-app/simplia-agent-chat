@@ -67,6 +67,15 @@ export function Chat() {
 }
 ```
 
+Provider accounts remain application-owned. The core exports
+`ProviderConnectionPort`, provider catalog types, and
+`sanitizeProviderConnection`; the React package exports the controlled
+`ProviderAccountPicker`. A host supplies its authenticated server adapter and
+passes only sanitized account summaries to the browser. Secrets are write-only
+connection input and must never be placed in events, browser storage, or UI
+props. This supports standalone application vaults as well as optional ACV2
+bridges without making ACV2 a runtime dependency.
+
 The application owns transport, authentication, persistence, policy enforcement and domain mutations. The UI only emits decisions and surface actions; the server must validate them again. `copy` and granular labels (`emptyLabel`, `composerPlaceholder`, `artifactStageLabel`) change display text only: event IDs, decision values, status values and payloads stay protocol data. Granular props win over `copy`, which wins over English defaults. The shell has no library brand unless the application passes `headerLabel`. See [theming](docs/THEMING.md) and [integration](docs/INTEGRATION.md).
 
 `AgentChatWorkspace` is a separate layout host around the shell. Applications pass history, conversation, and optional queue/workbench slots; the library does not own history or queue models. Hosts control which panes mount through `visiblePanes` and own available height. Import `assertConformance` and `formatConformanceReport` from `simplia-agent-chat/core/conformance`; React markup helpers live on the React package.
