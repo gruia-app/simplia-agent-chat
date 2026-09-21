@@ -81,6 +81,7 @@ export function useVoiceCapture(options) {
     const [status, setStatus] = useState("idle");
     const [transcript, setTranscript] = useState("");
     const [interim, setInterim] = useState("");
+    const [errorReason, setErrorReason] = useState(undefined);
     const sessionRef = useRef(undefined);
     const sourceRef = useRef(undefined);
     const busyRef = useRef(false);
@@ -109,17 +110,30 @@ export function useVoiceCapture(options) {
             setStatus((current) => (current === "error" ? current : "idle"));
         })();
     }, []);
+    const fail = useCallback((reason, error) => {
+        busyRef.current = false;
+        setErrorReason(reason);
+        setStatus("error");
+        try {
+            optionsRef.current.onError?.(reason, error);
+        }
+        catch {
+            // Host error handlers must not throw into capture callbacks.
+        }
+    }, []);
     const start = useCallback(() => {
         const opts = optionsRef.current;
         if (busyRef.current || sessionRef.current || sourceRef.current)
             return;
         if (!supported) {
+            setErrorReason("unsupported");
             setStatus("error");
             opts.onError?.("unsupported");
             return;
         }
         busyRef.current = true;
         setStatus("starting");
+        setErrorReason(undefined);
         setTranscript("");
         setInterim("");
         void (async () => {
@@ -128,6 +142,7 @@ export function useVoiceCapture(options) {
                 ...(opts.meter ? { meter: opts.meter } : {}),
                 ...(opts.model ? { model: opts.model } : {}),
                 ...(opts.language ? { language: opts.language } : {}),
+                ...(opts.provider ? { provider: opts.provider } : {}),
                 ...(opts.tenantId ? { tenantId: opts.tenantId } : {}),
                 ...(opts.organizationId ? { organizationId: opts.organizationId } : {}),
                 handlers: {
@@ -149,14 +164,7 @@ export function useVoiceCapture(options) {
                     onError: (reason, error) => {
                         sourceRef.current = undefined;
                         sessionRef.current = undefined;
-                        busyRef.current = false;
-                        setStatus("error");
-                        try {
-                            optionsRef.current.onError?.(reason, error);
-                        }
-                        catch {
-                            // Host error handlers must not throw into transport callbacks.
-                        }
+                        fail(reason, error);
                     },
                     onClose: () => {
                         sourceRef.current = undefined;
@@ -187,14 +195,7 @@ export function useVoiceCapture(options) {
                 // never opened, so nothing is billed for this capture.
                 sessionRef.current = undefined;
                 session.stop("error");
-                busyRef.current = false;
-                setStatus("error");
-                try {
-                    optionsRef.current.onError?.("capture_failed", error);
-                }
-                catch {
-                    // Host error handlers must not throw into capture callbacks.
-                }
+                fail("capture_failed", error);
                 return;
             }
             sourceRef.current = source;
@@ -211,7 +212,9 @@ export function useVoiceCapture(options) {
                 if (sourceRef.current === source)
                     sourceRef.current = undefined;
                 busyRef.current = false;
-                setStatus("error");
+                // Open failure already reported via transport onError → fail(); a
+                // user release during connect keeps the stopped/idle status.
+                setStatus((current) => (current === "error" ? current : "idle"));
                 return;
             }
             try {
@@ -227,20 +230,13 @@ export function useVoiceCapture(options) {
                 catch {
                     // Microphone release must not break teardown.
                 }
-                busyRef.current = false;
-                setStatus("error");
-                try {
-                    optionsRef.current.onError?.("capture_failed", error);
-                }
-                catch {
-                    // Host error handlers must not throw into capture callbacks.
-                }
+                fail("capture_failed", error);
                 return;
             }
             busyRef.current = false;
             setStatus("recording");
         })();
-    }, [supported]);
+    }, [fail, supported]);
     useEffect(() => () => {
         const source = sourceRef.current;
         const session = sessionRef.current;
@@ -251,6 +247,6 @@ export function useVoiceCapture(options) {
             .catch(() => undefined)
             .then(() => session?.stop("aborted"));
     }, []);
-    return { status, supported, transcript, interim, start, stop };
+    return { status, supported, transcript, interim, errorReason, start, stop };
 }
 //# sourceMappingURL=use-voice-capture.js.map
