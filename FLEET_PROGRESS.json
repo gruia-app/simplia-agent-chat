@@ -1,7 +1,7 @@
 {
   "app": "simplia-agent-chat",
-  "updated_at": "2026-09-21T13:45:00Z",
-  "current": "Voice hardening merged: PR #10 -> main as 7732ba4",
+  "updated_at": "2026-09-21T21:45:00Z",
+  "current": "Lane mission merged: PR #9 (fda086a), PR #10 (7732ba4). Cross-lane PR #11 merged (3285c1e): provider accounts coexist with chat-first/voice, unblocks insaidrv3 pin aa9a139",
   "done": [
     "core: ChatSuggestionRegistry + resolveChatSuggestions + createAccountSnapshotDerive (empty-account/quota precedence)",
     "core: VoiceTransport port, VoiceUsageEvent metering, createVoiceSession, Deepgram ephemeral-token + WS proxy transports, scripted transport",
@@ -14,10 +14,11 @@
     "core: provider field on VoiceSessionConfig/VoiceUsageEvent (default deepgram)",
     "react: useVoiceCapture errorReason + VoiceButton error state, retryable",
     "docs/CHAT_FIRST.md: error degradation matrix + FastAPI token/proxy reference examples + metering snake_case mapping",
-    "tests: provider metering + transport_failure/errorReason + mic-denial zero-byte event"
+    "tests: provider metering + transport_failure/errorReason + mic-denial zero-byte event",
+    "PR #11 merged: feat/provider-accounts reconciled onto main (index.ts export union verified), CI green on fresh base after update-branch"
   ],
   "blocked": [],
   "prs_open": [],
   "deploys_pending": [],
-  "notes": "PR #9 merged (fda086a). Hardening: every failure -> status error + typed errorReason, UI degrades to text, retryable. Metering: one event/session with provider+tenantId+durationMs; zero-byte error event when transport never opens."
+  "notes": "Lane backlog complete: registry+voz+demo+doc all on main. Second wave (per-app adoption: gruia-workspace, gestor_gmail, seo, b2bweb, newsletter_hub, proposia) is coordinator-gated per WORK_BACKLOG; insaidrv3 now unblocked to adopt suggestions/voice alongside provider accounts."
 }
