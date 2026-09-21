@@ -42,7 +42,7 @@
 
 .chat-lab-switcher {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid var(--lab-border);
   background: var(--lab-panel);
 }
@@ -70,6 +70,36 @@
 
 .chat-lab-switcher strong { font-size: 0.7rem; letter-spacing: 0.08em; }
 .chat-lab-switcher span { margin-top: 0.25rem; font-size: 0.62rem; line-height: 1.4; }
+
+.chat-lab-account-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.chat-lab-account-switch button {
+  border: 1px solid var(--lab-border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lab-muted);
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+.chat-lab-account-switch button:hover { color: var(--lab-text); background: var(--lab-panel-hover); }
+.chat-lab-account-switch button:focus-visible { outline: 2px solid var(--lab-blue); outline-offset: 1px; }
+.chat-lab-account-switch button[aria-pressed="true"] { border-color: var(--lab-blue); color: var(--lab-blue-text); }
+
+.chat-lab-voice-status {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--lab-muted);
+  font-size: 0.6rem;
+}
 
 .chat-lab-runtime {
   border: 1px solid var(--lab-border-strong);

@@ -1,12 +1,13 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useId, useMemo } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { selectActiveTurn, selectThreadRunState, selectThreadSurfaces, } from "simplia-agent-chat/core";
 import { ChatComposer } from "./ChatComposer.js";
 import { ChatRunStatus } from "./ChatRunStatus.js";
 import { ChatTimeline } from "./ChatTimeline.js";
 import { resolveAgentChatCopy, sacThemeAttributes, } from "./copy.js";
 import { PendingInteractions } from "./PendingInteractions.js";
+import { SuggestionChips } from "./SuggestionChips.js";
 import { SurfaceHost } from "./surface-registry.js";
 import { useFollowScroll } from "./use-follow-scroll.js";
 function surfaceSlotProps(surfaces, surfaceRegistry, onSurfaceAction) {
@@ -20,7 +21,7 @@ function DefaultArtifactStage({ surfaces, surfaceRegistry, onSurfaceAction, labe
     const headingId = useId();
     return (_jsxs("aside", { className: "sac-artifact-stage", "aria-labelledby": headingId, children: [_jsx("div", { className: "sac-artifact-stage-header", children: _jsx("h3", { id: headingId, children: label }) }), _jsx("div", { className: "sac-artifact-stage-scroll", children: surfaces.map((surface) => (_jsx(SurfaceHost, { block: surface, registry: surfaceRegistry, copy: copy, ...(onSurfaceAction ? { onAction: onSurfaceAction } : {}) }, surface.id))) })] }));
 }
-export function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy = false, toolbar, contextRail, emptyLabel, composer, renderMessage, artifactStageLabel, renderArtifactStage, renderFullscreenSurfaces, copy, theme, headerLabel, onInterrupt, composerActions, renderRunStatus, }) {
+export function AgentChatShell({ state, threadId, surfaceRegistry, title, subtitle, onSubmit, onResolveInteraction, onSurfaceAction, composerAriaLabel, composerPlaceholder, busy = false, toolbar, contextRail, emptyLabel, composer, renderMessage, artifactStageLabel, renderArtifactStage, renderFullscreenSurfaces, copy, theme, headerLabel, onInterrupt, composerActions, renderRunStatus, suggestions, onSuggestionSelect, suggestionsAriaLabel, composerDraft, }) {
     const resolvedCopy = useMemo(() => resolveAgentChatCopy(copy), [copy]);
     const protocolRunState = useMemo(() => selectThreadRunState(state, threadId), [state, threadId]);
     const runState = useMemo(() => (busy && (protocolRunState.phase === "idle" || protocolRunState.phase === "completed")
@@ -59,11 +60,21 @@ export function AgentChatShell({ state, threadId, surfaceRegistry, title, subtit
         : runState.phase !== "idle"
             ? (_jsx(ChatRunStatus, { runState: runState, copy: resolvedCopy, ...(onInterrupt ? { onInterrupt } : {}), ...(theme ? { theme } : {}) }))
             : null;
+    const draftRevisionRef = useRef(0);
+    const [suggestionDraft, setSuggestionDraft] = useState(undefined);
+    const effectiveDraft = composerDraft ?? suggestionDraft;
+    const onSuggestion = (suggestion) => {
+        if (composerDraft === undefined) {
+            draftRevisionRef.current += 1;
+            setSuggestionDraft({ value: suggestion.prompt, revision: draftRevisionRef.current });
+        }
+        onSuggestionSelect?.(suggestion);
+    };
     const chatStage = (_jsxs("div", { className: "sac-chat-stage", children: [_jsx("div", { className: "sac-scroll-region", ref: follow.containerRef, onScroll: follow.onScroll, tabIndex: 0, children: _jsx(ChatTimeline, { state: state, threadId: threadId, surfaceRegistry: surfaceRegistry, copy: resolvedCopy, ...(emptyLabel !== undefined ? { emptyLabel } : {}), ...(renderMessage ? { renderMessage } : {}), ...(onSurfaceAction ? { onSurfaceAction } : {}) }) }), follow.mode === "free-scrolling" ? (_jsx("button", { className: "sac-jump-button", type: "button", onClick: () => follow.scrollToEnd("smooth"), children: resolvedCopy.jumpToLive })) : null] }));
     return (_jsxs("section", { className: "sac-shell", "aria-label": title, ...sacThemeAttributes(theme), children: [_jsxs("header", { className: "sac-header", children: [_jsxs("div", { children: [headerLabel ? _jsx("div", { className: "sac-header-label", children: headerLabel }) : null, _jsx("h2", { children: title }), subtitle ? _jsx("p", { children: subtitle }) : null] }), _jsx("div", { className: "sac-toolbar", children: toolbar })] }), contextRail ? _jsx("div", { className: "sac-context-rail", children: contextRail }) : null, hasArtifactStage ? (_jsxs("div", { className: "sac-workspace-with-stage", children: [chatStage, _jsx("div", { className: "sac-artifact-column", children: renderArtifactStage
                             ? renderArtifactStage(slotProps)
                             : (_jsx(DefaultArtifactStage, { ...slotProps, label: stageLabel, copy: resolvedCopy })) })] })) : (chatStage), renderFullscreenSurfaces && fullscreenSurfaces.length > 0
                 ? renderFullscreenSurfaces(surfaceSlotProps(fullscreenSurfaces, surfaceRegistry, onSurfaceAction))
-                : null, _jsxs("div", { className: "sac-input-rail", children: [runStatus, _jsx(PendingInteractions, { interactions: interactions, onResolve: onResolveInteraction, copy: resolvedCopy }), composer ?? (_jsx(ChatComposer, { onSubmit: onSubmit, ariaLabel: composerAriaLabel, copy: resolvedCopy, busy: busy, ...(composerPlaceholder !== undefined ? { placeholder: composerPlaceholder } : {}), ...(composerActions !== undefined ? { actions: composerActions } : {}) }))] })] }));
+                : null, _jsxs("div", { className: "sac-input-rail", children: [runStatus, _jsx(PendingInteractions, { interactions: interactions, onResolve: onResolveInteraction, copy: resolvedCopy }), suggestions && suggestions.length > 0 ? (_jsx(SuggestionChips, { suggestions: suggestions, onSelect: onSuggestion, ariaLabel: suggestionsAriaLabel ?? resolvedCopy.suggestionsLabel, ...(theme ? { theme } : {}) })) : null, composer ?? (_jsx(ChatComposer, { onSubmit: onSubmit, ariaLabel: composerAriaLabel, copy: resolvedCopy, busy: busy, ...(composerPlaceholder !== undefined ? { placeholder: composerPlaceholder } : {}), ...(composerActions !== undefined ? { actions: composerActions } : {}), ...(effectiveDraft !== undefined ? { draft: effectiveDraft } : {}) }))] })] }));
 }
 //# sourceMappingURL=AgentChatShell.js.map

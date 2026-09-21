@@ -43,6 +43,12 @@ export interface AgentChatCopy {
   readonly interruptError: string;
   readonly interruptDescription: string;
   readonly messageRendererFallback: string;
+  readonly suggestionsLabel: string;
+  readonly voiceStartLabel: string;
+  readonly voiceStopLabel: string;
+  readonly voiceConnectingLabel: string;
+  readonly voiceUnsupportedLabel: string;
+  readonly voiceErrorLabel: string;
 }
 
 export type AgentChatCopyOverrides = Partial<AgentChatCopy>;
@@ -122,6 +128,12 @@ export const defaultAgentChatCopy: AgentChatCopy = Object.freeze({
   interruptError: "The stop request could not be sent. Try again.",
   interruptDescription: "Requests that the provider stop the current turn.",
   messageRendererFallback: "This message could not be displayed.",
+  suggestionsLabel: "Suggested actions",
+  voiceStartLabel: "Hold to talk",
+  voiceStopLabel: "Release to finish",
+  voiceConnectingLabel: "Connecting microphone…",
+  voiceUnsupportedLabel: "Voice input is not available in this browser",
+  voiceErrorLabel: "Voice capture failed. Try again.",
 });
 
 const resolvedCopies = new WeakSet<object>();

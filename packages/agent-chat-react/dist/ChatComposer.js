@@ -1,8 +1,8 @@
 "use client";
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useCallback, useId, useRef, useState, } from "react";
+import { useCallback, useEffect, useId, useRef, useState, } from "react";
 import { resolveAgentChatCopy, sacThemeAttributes, } from "./copy.js";
-export function ChatComposer({ onSubmit, ariaLabel, placeholder, disabled = false, busy = false, submitLabel, hint, initialValue = "", actions, onDraftChange, copy, theme, }) {
+export function ChatComposer({ onSubmit, ariaLabel, placeholder, disabled = false, busy = false, submitLabel, hint, initialValue = "", actions, onDraftChange, draft, copy, theme, }) {
     const resolved = resolveAgentChatCopy(copy);
     const placeholderText = placeholder ?? resolved.composerPlaceholder;
     const submitText = submitLabel ?? resolved.composerSubmitLabel;
@@ -21,6 +21,13 @@ export function ChatComposer({ onSubmit, ariaLabel, placeholder, disabled = fals
         setValue(next);
         onDraftChange?.(next);
     }, [onDraftChange]);
+    const draftRevisionRef = useRef(undefined);
+    useEffect(() => {
+        if (draft === undefined || draft.revision === draftRevisionRef.current)
+            return;
+        draftRevisionRef.current = draft.revision;
+        updateDraft(draft.value);
+    }, [draft, updateDraft]);
     const submit = useCallback(() => {
         const snapshot = valueRef.current.trim();
         if (!snapshot || disabled || busy || submittingRef.current)

@@ -7,7 +7,10 @@ export * from "./ChatRunStatus.js";
 export * from "./ChatTimeline.js";
 export * from "./interrupt.js";
 export * from "./PendingInteractions.js";
+export * from "./SuggestionChips.js";
 export * from "./surface-registry.js";
 export * from "./use-follow-scroll.js";
 export * from "./use-surface-action.js";
+export * from "./use-voice-capture.js";
+export * from "./VoiceButton.js";
 //# sourceMappingURL=index.js.map

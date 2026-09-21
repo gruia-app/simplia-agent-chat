@@ -1,0 +1,19 @@
+{
+  "app": "simplia-agent-chat",
+  "updated_at": "2026-09-21T12:30:00Z",
+  "current": "Mission complete: chat-first home + Deepgram voice shipped in PR #9 (ready for review)",
+  "done": [
+    "core: ChatSuggestionRegistry + resolveChatSuggestions + createAccountSnapshotDerive (empty-account/quota precedence)",
+    "core: VoiceTransport port, VoiceUsageEvent metering, createVoiceSession, Deepgram ephemeral-token + WS proxy transports, scripted transport",
+    "react: SuggestionChips (roving tabindex) + ChatComposer draft prop + shell wiring (suggestions/onSuggestionSelect/composerDraft)",
+    "react: useVoiceCapture + VoiceButton push-to-talk (pointer+keyboard), MediaRecorder source injectable",
+    "example react-lab: home fixture with account-scenario switcher, suggestion chips, scripted voice + metering output",
+    "docs/CHAT_FIRST.md per-app recipe + INTEGRATION.md link",
+    "changeset chat-first-home-voice (minor, 3 packages)",
+    "tests: 20 core + 7 react new tests passing"
+  ],
+  "blocked": [],
+  "prs_open": ["https://github.com/gruia-app/simplia-agent-chat/pull/9"],
+  "deploys_pending": [],
+  "notes": "Provider key never in browser: ephemeral token or app-backend WS proxy. Billing per app via meter hook -> app quota system. Defaults nova-3/multi."
+}
