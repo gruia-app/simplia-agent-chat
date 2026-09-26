@@ -116,6 +116,28 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  servers/ts:
+    dependencies:
+      '@simplia/agent-chat-contract':
+        specifier: workspace:^
+        version: link:../../packages/agent-chat-contract
+      ajv:
+        specifier: 8.17.1
+        version: 8.17.1
+      ajv-formats:
+        specifier: 3.0.1
+        version: 3.0.1(ajv@8.17.1)
+      simplia-agent-chat:
+        specifier: workspace:*
+        version: link:../..
+    devDependencies:
+      '@types/node':
+        specifier: 26.2.0
+        version: 26.2.0
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
 packages:
 
   '@apidevtools/json-schema-ref-parser@11.9.3':

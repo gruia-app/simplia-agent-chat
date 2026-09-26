@@ -1,0 +1,37 @@
+{
+  "name": "@gruia/agent-tools-server",
+  "version": "2.0.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "Server-side library for the chat-centric ToolSpec/Proposal contract (SPEC-CHAT-F1-R687 rev 3): tool registry, proposal store, apply tokens, idempotency, audit outbox.",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "node ./node_modules/typescript/bin/tsc -p tsconfig.json",
+    "typecheck": "node ./node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+    "test": "pnpm run build && node --test"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@simplia/agent-chat-contract": "workspace:^",
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1",
+    "simplia-agent-chat": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "26.2.0",
+    "typescript": "^5.6.3"
+  }
+}
