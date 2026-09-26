@@ -36,7 +36,9 @@ export type { ActorContext, PolicyChecker, RoleChecker, RouteInfo } from "./serv
 export {
   ASSERTION_MAX_LIFETIME_S,
   DelegatedGateway,
+  cliApplyAllowed,
   issueTestAssertion,
+  jwksResolverFromDocument,
 } from "./gateway.js";
 export type {
   DelegatedAssertion,

@@ -9,10 +9,15 @@
  */
 
 import assert from "node:assert/strict";
-import { generateKeyPairSync } from "node:crypto";
+import { createPublicKey, generateKeyPairSync } from "node:crypto";
 import test from "node:test";
 
-import { DelegatedGateway, issueTestAssertion } from "../dist/index.js";
+import {
+  DelegatedGateway,
+  cliApplyAllowed,
+  issueTestAssertion,
+  jwksResolverFromDocument,
+} from "../dist/index.js";
 import {
   APP,
   OTHER_ORG,
@@ -38,6 +43,18 @@ const { privateKey, publicKey } = generateKeyPairSync("rsa", {
   privateKeyEncoding: { type: "pkcs8", format: "pem" },
 });
 
+// §9.4: JWKS de fixture — el gateway resuelve la clave por kid.
+const JWKS = {
+  keys: [
+    {
+      ...createPublicKey(publicKey).export({ format: "jwk" }),
+      kid: "test-key",
+      use: "sig",
+      alg: "RS256",
+    },
+  ],
+};
+
 function makeGateway({ elicit, entitlement } = {}) {
   const { service, storage, reversible, irreversible, sink } = makeService({
     entitlement: entitlement ?? mcpEntitlement(),
@@ -45,7 +62,7 @@ function makeGateway({ elicit, entitlement } = {}) {
   const gateway = new DelegatedGateway({
     service,
     appKey: APP,
-    jwksResolver: () => publicKey,
+    jwksResolver: jwksResolverFromDocument(JWKS),
     serviceTokenVerifier: (t) => t === SVC,
     verifiedClients: new Set([CLIENT]),
     reviewUrlTemplate: "https://app.example/agent/proposals/{proposal_id}",
@@ -323,4 +340,84 @@ test("auditoría registra via=mcp y client_id", async () => {
   assert.equal(applied.client_id, CLIENT);
   assert.equal(applied.client_verified, true);
   assert.equal(applied.confirm_channel, "elicitation");
+});
+
+// ------------------------------------------------------------- §9.4 JWKS
+
+test("kid no presente en el JWKS → 401", async () => {
+  const { gateway } = makeGateway();
+  await expectError(
+    gateway.callTool(MCP_WRITE, { fact: "x" }, {
+      serviceToken: SVC,
+      assertion: assertion({ kid: "kid-que-no-existe" }),
+    }),
+    401,
+  );
+});
+
+test("jwksResolverFromDocument resuelve por kid y falla si falta", () => {
+  const resolve = jwksResolverFromDocument(JWKS);
+  assert.equal(resolve("test-key").kid, "test-key");
+  assert.throws(() => resolve("otro"));
+});
+
+// ------------------------------------------------------------- §9.5 CLI
+
+test("cliApplyAllowed: solo reversible+card con TTY", () => {
+  assert.equal(cliApplyAllowed("reversible", "card", true), true);
+  assert.equal(cliApplyAllowed("reversible", "card", false), false);
+  assert.equal(cliApplyAllowed("reversible", "strong", true), false);
+  assert.equal(cliApplyAllowed("irreversible", "strong", true), false);
+  assert.equal(cliApplyAllowed("read", "none", true), false);
+});
+
+async function proposalViaCli(gateway) {
+  const res = await gateway.callTool(MCP_WRITE, { fact: "x" }, { ...AUTH(), via: "cli" });
+  return res.structuredContent.proposal_id;
+}
+
+test("CLI: apply con TTY ejecuta y audita via=cli/cli_tty", async () => {
+  const { gateway, reversible, sink } = makeGateway();
+  const pid = await proposalViaCli(gateway);
+  const res = await gateway.callTool(SYS_APPLY, { proposal_id: pid }, {
+    ...AUTH(), via: "cli", cliTtyConfirmed: true,
+  });
+  assert.ok(res.change_id);
+  assert.equal(reversible.applied.length, 1);
+  const applied = sink.events.find((e) => e.action === "applied");
+  assert.equal(applied.via, "cli");
+  assert.equal(applied.confirm_channel, "cli_tty");
+});
+
+test("CLI: apply sin TTY devuelve review_url sin ejecutar", async () => {
+  const { gateway, reversible } = makeGateway();
+  const pid = await proposalViaCli(gateway);
+  const res = await gateway.callTool(SYS_APPLY, { proposal_id: pid }, { ...AUTH(), via: "cli" });
+  assert.ok(res.review_url);
+  assert.equal(reversible.applied.length, 0);
+});
+
+test("CLI: apply irreversible devuelve review_url aunque haya TTY", async () => {
+  const { gateway, irreversible } = makeGateway();
+  const res = await gateway.callTool(MCP_IRREVERSIBLE, { account: "acc-1" }, { ...AUTH(), via: "cli" });
+  const out = await gateway.callTool(SYS_APPLY, { proposal_id: res.structuredContent.proposal_id }, {
+    ...AUTH(), via: "cli", cliTtyConfirmed: true,
+  });
+  assert.ok(out.review_url);
+  assert.equal(irreversible.applied.length, 0);
+});
+
+test("CLI: revert con TTY ejecuta; sin TTY devuelve review_url", async () => {
+  const { gateway, reversible } = makeGateway();
+  const pid = await proposalViaCli(gateway);
+  const applied = await gateway.callTool(SYS_APPLY, { proposal_id: pid }, {
+    ...AUTH(), via: "cli", cliTtyConfirmed: true,
+  });
+  const denied = await gateway.callTool(SYS_REVERT, { change_id: applied.change_id }, { ...AUTH(), via: "cli" });
+  assert.ok(denied.review_url);
+  const ok = await gateway.callTool(SYS_REVERT, { change_id: applied.change_id }, {
+    ...AUTH(), via: "cli", cliTtyConfirmed: true,
+  });
+  assert.equal(ok.change.state, "reverted");
+  assert.equal(reversible.reverted.length, 1);
 });

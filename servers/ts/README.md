@@ -33,13 +33,17 @@ las mismas fixtures que la suite Python.
   de `jti` del gateway (un solo uso, se conserva durante su `exp`).
 - `mcp` — re-exporta `toMcpTool`/`toMcpName`/`fromMcpName` del paquete
   de contrato (paridad 1:1 con Python).
-- `gateway` — `DelegatedGateway` (§9.3–§9.4): token de servicio +
-  aserción firmada por el kernel (JWKS, `aud=app_key`, `exp-iat≤60 s`,
-  `jti` de un solo uso → 401 en replay), scopes `app:`/`tool:`,
-  entitlement `mcp_access`, herramientas de sistema
+- `gateway` — `DelegatedGateway` (§9.3–§9.5): token de servicio +
+  aserción firmada por el kernel verificada contra el JWKS del kernel
+  (`jwksResolverFromDocument` resuelve el `kid`; `aud=app_key`,
+  `exp-iat≤60 s`, `jti` de un solo uso → 401 en replay), scopes
+  `app:`/`tool:`, entitlement `mcp_access`, herramientas de sistema
   `<app_key>__proposal__apply|revert|get` con elicitation o `review_url`
   (sin token), y aislamiento anti-IDOR → 404. Las escrituras por MCP
-  solo crean proposals y devuelven `ProposalRef`.
+  solo crean proposals y devuelven `ProposalRef`. Con `via="cli"`
+  aplica la regla §9.5 (`cliApplyAllowed`): solo reversible+card con
+  confirmación TTY (`cliTtyConfirmed`); el resto → `review_url` y no
+  existe ningún flag `--yes`.
 
 ## Garantías (§4/§6/§7)
 

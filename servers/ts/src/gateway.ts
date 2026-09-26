@@ -14,9 +14,13 @@
  *   `review_url` (sin token) sin ejecutar.
  * - `get`, `apply` y `revert` exigen mismo user_id, org_id y app_key;
  *   si no, 404 (anti-IDOR).
+ * - CLI (§9.5): con `via="cli"` apply/revert exigen confirmación TTY
+ *   (`cliTtyConfirmed`) y solo lo reversible con card; todo lo demás
+ *   devuelve `review_url`. No existe flag `--yes` ni equivalente.
  */
 
-import { createSign, createVerify, randomUUID } from "node:crypto";
+import { createPublicKey, createSign, createVerify, randomUUID } from "node:crypto";
+import type { JsonWebKeyInput, KeyObject } from "node:crypto";
 
 import { fromMcpName } from "@simplia/agent-chat-contract";
 
@@ -49,6 +53,25 @@ export interface DelegatedAssertion {
 }
 
 export type JwksResolver = (kid: string | undefined) => string | object;
+
+/** §9.5: por la CLI solo se aplica lo reversible con `card` y solo si
+ * stdin y stdout son TTY. No existe flag `--yes` ni equivalente: la
+ * firma de esta función no admite bypass. */
+export function cliApplyAllowed(effect: string, confirmEffective: string, isTty: boolean): boolean {
+  return effect === "reversible" && confirmEffective === "card" && isTty;
+}
+
+/** Resolver §9.4 a partir de un documento JWKS `{keys: [...]}`: busca
+ * la clave pública por `kid`. Lanza si el kid no está. */
+export function jwksResolverFromDocument(jwks: { keys?: unknown[] } | null | undefined): JwksResolver {
+  const keys = (jwks?.keys ?? []).filter((k): k is Record<string, unknown> => typeof k === "object" && k !== null);
+  return (kid) => {
+    for (const jwk of keys) {
+      if (jwk.kid === kid || (kid === undefined && keys.length === 1)) return jwk;
+    }
+    throw new Error(`kid ${kid ?? "<none>"} not in JWKS`);
+  };
+}
 export type ServiceTokenVerifier = (token: string) => boolean;
 export type ElicitFn = (proposal: unknown) => string | Promise<string>;
 
@@ -121,7 +144,10 @@ export class DelegatedGateway {
       decoded = decodeJwt(params.assertion);
       const alg = decoded.header.alg;
       if (alg !== "RS256" && alg !== "ES256") throw new Error(`bad alg ${alg}`);
-      const key = this.jwksResolver(decoded.header.kid as string | undefined);
+      let key = this.jwksResolver(decoded.header.kid as string | undefined) as string | KeyObject;
+      if (typeof key === "object" && (key as unknown as Record<string, unknown>).kty !== undefined) {
+        key = createPublicKey({ key: key as unknown as JsonWebKeyInput["key"], format: "jwk" });
+      }
       const verify = createVerify(alg === "ES256" ? "SHA256" : "RSA-SHA256");
       verify.update(decoded.signed);
       const keyInput =
@@ -179,8 +205,18 @@ export class DelegatedGateway {
   async callTool(
     mcpName: string,
     args: Record<string, unknown> | undefined,
-    params: { assertion?: string | null; serviceToken?: string | null; threadId?: string; now?: string | undefined },
+    params: {
+      assertion?: string | null;
+      serviceToken?: string | null;
+      threadId?: string;
+      /** Canal §9.6: "mcp" (defecto) o "cli" (reglas §9.5). */
+      via?: "mcp" | "cli";
+      /** §9.5: la CLI atestigua que stdin+stdout eran TTY. */
+      cliTtyConfirmed?: boolean;
+      now?: string | undefined;
+    },
   ): Promise<unknown> {
+    const via = params.via ?? "mcp";
     const subject = await this.verifyAssertion(params);
     let parts: { app_key: string; ns: string; verb: string };
     try {
@@ -195,12 +231,12 @@ export class DelegatedGateway {
     await this.checkMcpAccess(subject);
 
     const route: RouteInfo = {
-      via: "mcp",
+      via,
       client_id: subject.clientId,
       client_verified: subject.clientVerified,
     };
     if (parts.ns === "proposal") {
-      return this.systemTool(parts.verb, subject, route, args ?? {}, params.now);
+      return this.systemTool(parts.verb, subject, route, args ?? {}, params.cliTtyConfirmed ?? false, params.now);
     }
 
     const toolName = `${parts.ns}.${parts.verb}`;
@@ -222,7 +258,7 @@ export class DelegatedGateway {
       input: args ?? {},
       orgId: subject.orgId,
       userId: subject.userId,
-      threadId: params.threadId ?? `mcp:${subject.mcpTokenId}`,
+      threadId: params.threadId ?? `${via}:${subject.mcpTokenId}`,
       route,
       now: params.now,
     });
@@ -247,6 +283,7 @@ export class DelegatedGateway {
     subject: DelegatedAssertion,
     route: RouteInfo,
     args: Record<string, unknown>,
+    cliTtyConfirmed: boolean,
     now?: string | undefined,
   ): Promise<unknown> {
     if (verb === "get") {
@@ -255,6 +292,9 @@ export class DelegatedGateway {
     }
     if (verb === "apply") {
       const proposal = await this.proposalForSubject(args.proposal_id as string | undefined, subject);
+      if (route.via === "cli") {
+        return this.applyViaCli(proposal, subject, cliTtyConfirmed, now);
+      }
       if (!(await this.elicitationAllowed(proposal, subject))) {
         return { review_url: this.reviewUrl(proposal.id) };
       }
@@ -262,12 +302,79 @@ export class DelegatedGateway {
     }
     if (verb === "revert") {
       const change = await this.changeForSubject(args.change_id as string | undefined, subject);
+      if (route.via === "cli") {
+        return this.revertViaCli(change, subject, cliTtyConfirmed, now);
+      }
       if (!(await this.elicitationAllowedForChange(change, subject))) {
         return { review_url: this.reviewUrl(change.proposal_id) };
       }
       return this.revertViaElicitation(change, subject, route, now);
     }
     throw notFound("unknown system tool", "unknown_tool");
+  }
+
+  private async applyViaCli(
+    proposal: ProposalRow,
+    subject: DelegatedAssertion,
+    ttyConfirmed: boolean,
+    now?: string | undefined,
+  ): Promise<unknown> {
+    /** §9.5: la CLI solo aplica lo reversible con card y solo con TTY;
+     * en cualquier otro caso devuelve review_url sin ejecutar. */
+    const { spec } = this.service.registry.get(proposal.tool);
+    if (!cliApplyAllowed(spec.effect, proposal.confirm_effective, ttyConfirmed)) {
+      return { review_url: this.reviewUrl(proposal.id) };
+    }
+    const confirmed: RouteInfo = {
+      via: "cli",
+      client_id: subject.clientId,
+      client_verified: subject.clientVerified,
+      confirm_channel: "cli_tty",
+    };
+    const accepted = await this.service.acceptProposal(proposal.id, {
+      actorUserId: subject.userId,
+      context: "user_confirmed",
+      route: confirmed,
+      now,
+    });
+    return this.service.applyProposal(proposal.id, {
+      token: accepted.apply_token,
+      actorUserId: subject.userId,
+      context: "user_confirmed",
+      route: confirmed,
+      now,
+    });
+  }
+
+  private async revertViaCli(
+    change: ChangeRow,
+    subject: DelegatedAssertion,
+    ttyConfirmed: boolean,
+    now?: string | undefined,
+  ): Promise<unknown> {
+    /** §9.5: revert por la CLI solo con TTY y modo revert; si no,
+     * review_url. */
+    if (!ttyConfirmed || change.undo_mode !== "revert" || change.state !== "applied") {
+      return { review_url: this.reviewUrl(change.proposal_id) };
+    }
+    const confirmed: RouteInfo = {
+      via: "cli",
+      client_id: subject.clientId,
+      client_verified: subject.clientVerified,
+      confirm_channel: "cli_tty",
+    };
+    const issued = await this.service.createRevertToken(change.change_id, {
+      actorUserId: subject.userId,
+      orgId: subject.orgId,
+      now,
+    });
+    return this.service.revertChange(change.change_id, {
+      token: issued.revert_token,
+      actorUserId: subject.userId,
+      context: "user_confirmed",
+      route: confirmed,
+      now,
+    });
   }
 
   private async proposalForSubject(proposalId: string | undefined, subject: DelegatedAssertion): Promise<ProposalRow> {
