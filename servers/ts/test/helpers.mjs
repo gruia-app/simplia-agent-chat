@@ -5,6 +5,9 @@ import {
   StubEntitlement,
   ToolRegistry,
 } from "../dist/index.js";
+import { SCHEMAS } from "@simplia/agent-chat-contract";
+
+const PROPOSAL_REF = SCHEMAS["proposal-ref"];
 
 export const ORG = "org-1";
 export const OTHER_ORG = "org-2";
@@ -21,6 +24,7 @@ export const REVERSIBLE_SPEC = {
     required: ["fact"],
     additionalProperties: false,
   },
+  output_schema: PROPOSAL_REF,
   effect: "reversible",
   cost: { kind: "credits", estimator: true },
   confirm: "card",
@@ -37,6 +41,7 @@ export const IRREVERSIBLE_SPEC = {
     required: ["account"],
     additionalProperties: false,
   },
+  output_schema: PROPOSAL_REF,
   effect: "irreversible",
   cost: { kind: "none", estimator: false },
   confirm: "strong",
@@ -52,6 +57,7 @@ export const GRACE_SPEC = {
     properties: { fact: { type: "string" } },
     required: ["fact"],
   },
+  output_schema: PROPOSAL_REF,
   effect: "reversible",
   cost: { kind: "none", estimator: false },
   confirm: "card",
@@ -89,14 +95,32 @@ export class FakeTool {
   }
 }
 
-export function makeEntitlement({ allow = true, thresholdCredits = null, toolsAllow = null, maxEffect = "irreversible" } = {}) {
+export function makeEntitlement({ allow = true, thresholdCredits = null, toolsAllow = null, maxEffect = "irreversible", mcpAccess = false, elicitationApply = false } = {}) {
   const row = {
     enabled: allow,
     tools_allow: toolsAllow ?? ["memoria.recordar", "memoria.gracia", "crm.borrar_cuenta"],
     max_effect: maxEffect,
+    mcp_access: mcpAccess,
+    elicitation_apply: elicitationApply,
     cost_threshold: thresholdCredits !== null ? { credits: thresholdCredits } : {},
   };
   return new StubEntitlement(allow, { [`${ORG}/${APP}`]: row });
+}
+
+export function mcpEntitlement(extra = {}) {
+  const row = {
+    enabled: true,
+    tools_allow: ["*"],
+    max_effect: "irreversible",
+    mcp_access: true,
+    elicitation_apply: true,
+    cost_threshold: {},
+    ...extra,
+  };
+  // La segunda org también tiene acceso: los tests anti-IDOR deben
+  // llegar hasta la comprobación de sujeto, no morir en entitlement.
+  const rows = { [`${ORG}/${APP}`]: row, [`${OTHER_ORG}/${APP}`]: { ...row } };
+  return new StubEntitlement(true, rows);
 }
 
 export function makeService({ entitlement, sink } = {}) {

@@ -1,9 +1,10 @@
 # @gruia/agent-tools-server (TypeScript)
 
 Librería de servidor del contrato de herramientas del agente
-(`SPEC-CHAT-F1-R687` rev 3). Misma semántica que `servers/python`
-(`gruia_agent_tools`): implementa §4 (seguridad y apply), §6 (auditoría y
-outbox), §7 (tests de token) y §8 (entitlement `chat_tools`).
+(`SPEC-CHAT-F1-R687` rev 4/5, `CEO-PSAAS-R696` + `PLAT-R696-01`). Misma
+semántica que `servers/python` (`gruia_agent_tools`): implementa §4
+(seguridad y apply), §6 (auditoría y outbox), §7 (tests de token), §8
+(entitlement `chat_tools`) y §9 (proyección MCP + modo delegado).
 
 El contrato normativo vive en `packages/agent-chat-contract` — este
 paquete reutiliza su validador y tipos generados, y sus tests recorren
@@ -23,11 +24,22 @@ las mismas fixtures que la suite Python.
   servidor, `timingSafeEqual`, TTL ≤ 120 s.
 - `entitlement` — `StubEntitlement` **deniega por defecto**;
   `HttpEntitlementChecker` (§8) es fail-closed con caché ≤ 60 s.
-- `audit` — `AuditEvent` con los campos exactos de §6 (nunca `input` ni
+- `audit` — `AuditEvent` con los campos exactos de §6 rev 4 (`via`,
+  `client_id`, `client_verified`, `confirm_channel`; nunca `input` ni
   `preview`), outbox at-least-once con dedup por `event_id`,
   `JsonLinesSink` por defecto y `HttpAuditSink` con la forma de F2.
 - `storage` — interfaz `Storage` + `MemoryStorage` de referencia; las
-  operaciones CAS se traducen 1:1 a SQL en producción.
+  operaciones CAS se traducen 1:1 a SQL en producción. Incluye la tabla
+  de `jti` del gateway (un solo uso, se conserva durante su `exp`).
+- `mcp` — re-exporta `toMcpTool`/`toMcpName`/`fromMcpName` del paquete
+  de contrato (paridad 1:1 con Python).
+- `gateway` — `DelegatedGateway` (§9.3–§9.4): token de servicio +
+  aserción firmada por el kernel (JWKS, `aud=app_key`, `exp-iat≤60 s`,
+  `jti` de un solo uso → 401 en replay), scopes `app:`/`tool:`,
+  entitlement `mcp_access`, herramientas de sistema
+  `<app_key>__proposal__apply|revert|get` con elicitation o `review_url`
+  (sin token), y aislamiento anti-IDOR → 404. Las escrituras por MCP
+  solo crean proposals y devuelven `ProposalRef`.
 
 ## Garantías (§4/§6/§7)
 

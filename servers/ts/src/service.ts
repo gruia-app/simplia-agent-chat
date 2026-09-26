@@ -20,7 +20,10 @@ import {
   OutboxDrainer,
   type AuditEvent,
   type AuditSink,
+  type AuditVia,
+  type ConfirmChannel,
   type CostUnit,
+  type RouteInfo,
 } from "./audit.js";
 import { StubEntitlement, type EntitlementChecker } from "./entitlement.js";
 import {
@@ -64,6 +67,8 @@ class AllowAll implements RoleChecker, PolicyChecker {
 }
 
 export type ActorContext = "user_confirmed" | "model_context";
+
+export type { RouteInfo } from "./audit.js";
 
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -116,7 +121,7 @@ export interface AgentToolsServiceDeps {
 export class AgentToolsService {
   readonly storage: Storage;
   readonly registry: ToolRegistry;
-  private readonly entitlement: EntitlementChecker;
+  readonly entitlement: EntitlementChecker;
   private readonly role: RoleChecker;
   private readonly policy: PolicyChecker;
   private readonly drainer: OutboxDrainer | null;
@@ -147,7 +152,8 @@ export class AgentToolsService {
     planId?: string;
     step?: number;
     ttlS?: number;
-    now?: string;
+    route?: RouteInfo | undefined;
+    now?: string | undefined;
   }): Promise<{ proposal: ProposalRow }> {
     const nowIso = params.now ?? isoNow();
     const { spec, impl } = this.registry.get(params.tool);
@@ -187,7 +193,7 @@ export class AgentToolsService {
     };
     await this.storage.insertProposal(proposal);
     await this.storage.insertOutboxEvents([
-      this.event({ action: "proposed", result: "ok", userId: params.userId, proposal, ts: nowIso }),
+      this.event({ action: "proposed", result: "ok", userId: params.userId, proposal, ts: nowIso, route: params.route }),
     ]);
     await this.drain();
     return { proposal };
@@ -196,12 +202,12 @@ export class AgentToolsService {
   /** POST /agent/proposals/{id}/modify → 201 {proposal} (supersedes). */
   async modifyProposal(
     proposalId: string,
-    params: { newInput: Record<string, unknown>; actorUserId: string; now?: string },
+    params: { newInput: Record<string, unknown>; actorUserId: string; route?: RouteInfo | undefined; now?: string | undefined },
   ): Promise<{ proposal: ProposalRow }> {
     const nowIso = params.now ?? isoNow();
     const proposal = await this.requireProposal(proposalId);
     this.assertActor(proposal, params.actorUserId);
-    await this.assertNotExpired(proposal, nowIso);
+    await this.assertNotExpired(proposal, nowIso, params.route);
 
     if (!(await this.storage.casProposalState(proposalId, "proposed", { state: "discarded" }))) {
       if (proposal.state === "applied") {
@@ -210,7 +216,7 @@ export class AgentToolsService {
       throw conflict("proposal not in proposed state", "invalid_transition");
     }
     await this.storage.insertOutboxEvents([
-      this.event({ action: "discarded", result: "ok", userId: params.actorUserId, proposal }),
+      this.event({ action: "discarded", result: "ok", userId: params.actorUserId, proposal, route: params.route }),
     ]);
     await this.drain();
 
@@ -244,7 +250,7 @@ export class AgentToolsService {
     };
     await this.storage.insertProposal(next);
     await this.storage.insertOutboxEvents([
-      this.event({ action: "proposed", result: "ok", userId: params.actorUserId, proposal: next }),
+      this.event({ action: "proposed", result: "ok", userId: params.actorUserId, proposal: next, route: params.route }),
     ]);
     await this.drain();
     return { proposal: next };
@@ -253,7 +259,7 @@ export class AgentToolsService {
   /** POST /agent/proposals/{id}/accept → 200 {apply_token}. */
   async acceptProposal(
     proposalId: string,
-    params: { actorUserId: string; context: ActorContext; ack?: string | null; now?: string },
+    params: { actorUserId: string; context: ActorContext; ack?: string | null; route?: RouteInfo | undefined; now?: string | undefined },
   ): Promise<{ apply_token: string; proposal_id: string }> {
     const nowIso = params.now ?? isoNow();
     const proposal = await this.requireProposal(proposalId);
@@ -261,10 +267,10 @@ export class AgentToolsService {
     const { spec } = this.registry.get(proposal.tool);
 
     if (params.context === "model_context") {
-      await this.deny(proposal, params.actorUserId, "token", "model_context_apply");
+      await this.deny(proposal, params.actorUserId, "token", "model_context_apply", params.route);
       throw forbidden("model context cannot accept proposals", "model_context_apply");
     }
-    await this.assertNotExpired(proposal, nowIso);
+    await this.assertNotExpired(proposal, nowIso, params.route);
     if (proposal.state !== "proposed") {
       throw conflict("proposal not in proposed state", "invalid_transition");
     }
@@ -272,7 +278,7 @@ export class AgentToolsService {
     if (proposal.confirm_effective === "strong" && !params.ack) {
       throw badRequest("strong confirmation requires an explicit ack", "ack_required");
     }
-    await this.checkEntitlement(proposal, spec, params.actorUserId);
+    await this.checkEntitlement(proposal, spec, params.actorUserId, params.route);
     if (!(await this.storage.casProposalState(proposalId, "proposed", { state: "accepted" }))) {
       throw conflict("proposal not in proposed state", "invalid_transition");
     }
@@ -287,7 +293,7 @@ export class AgentToolsService {
     });
     await this.storage.insertApplyToken(row);
     await this.storage.insertOutboxEvents([
-      this.event({ action: "accepted", result: "ok", userId: params.actorUserId, proposal }),
+      this.event({ action: "accepted", result: "ok", userId: params.actorUserId, proposal, route: params.route }),
     ]);
     await this.drain();
     return { apply_token: token, proposal_id: proposalId };
@@ -296,14 +302,14 @@ export class AgentToolsService {
   /** POST /agent/proposals/{id}/apply → 200 {proposal, change_id}. */
   async applyProposal(
     proposalId: string,
-    params: { token: string; actorUserId: string; context: ActorContext; ack?: string | null; now?: string },
+    params: { token: string; actorUserId: string; context: ActorContext; ack?: string | null; route?: RouteInfo | undefined; now?: string | undefined },
   ): Promise<{ proposal: ProposalRow; change_id: string | null; grace_until?: string }> {
     const nowIso = params.now ?? isoNow();
     const proposal = await this.requireProposal(proposalId);
     const { spec, impl } = this.registry.get(proposal.tool);
 
     if (params.context === "model_context") {
-      await this.deny(proposal, params.actorUserId, "token", "model_context_apply");
+      await this.deny(proposal, params.actorUserId, "token", "model_context_apply", params.route);
       throw forbidden("model context cannot apply proposals", "model_context_apply");
     }
 
@@ -316,25 +322,25 @@ export class AgentToolsService {
       if (change && change.applied_token_hash === tokenHash) {
         return { proposal: (await this.requireProposal(proposalId)), change_id: change.change_id };
       }
-      await this.deny(proposal, params.actorUserId, "token", "token_already_used");
+      await this.deny(proposal, params.actorUserId, "token", "token_already_used", params.route);
       throw forbidden("apply token already used", "token_already_used");
     }
 
     if (proposal.confirm_effective === "strong" && !params.ack) {
       throw badRequest("strong confirmation requires an explicit ack", "ack_required");
     }
-    await this.validateApplyToken(tokenRow, proposal, spec, params.actorUserId, nowIso);
-    await this.checkEntitlement(proposal, spec, params.actorUserId);
-    await this.checkRoleAndPolicy(proposal, spec, params.actorUserId);
+    await this.validateApplyToken(tokenRow, proposal, spec, params.actorUserId, nowIso, params.route);
+    await this.checkEntitlement(proposal, spec, params.actorUserId, params.route);
+    await this.checkRoleAndPolicy(proposal, spec, params.actorUserId, params.route);
     await this.checkCostReestimate(proposal, spec, impl.estimate.bind(impl));
-    await this.assertNotExpired(proposal, nowIso);
+    await this.assertNotExpired(proposal, nowIso, params.route);
     if (proposal.state !== "accepted") {
       throw conflict("proposal not in accepted state", "invalid_transition");
     }
 
     // CAS: solo una llamada consume el token (§4 concurrencia).
     if (!(await this.storage.consumeApplyToken(tokenHash, nowIso))) {
-      await this.deny(proposal, params.actorUserId, "token", "token_already_used");
+      await this.deny(proposal, params.actorUserId, "token", "token_already_used", params.route);
       throw forbidden("apply token already used", "token_already_used");
     }
 
@@ -347,6 +353,7 @@ export class AgentToolsService {
         status: "pending",
         change_id: null,
         created_at: nowIso,
+        route: params.route,
       };
       await this.storage.insertGraceJob(job);
       await this.storage.casProposalState(proposalId, "accepted", { state: "applied" });
@@ -358,13 +365,13 @@ export class AgentToolsService {
       };
     }
 
-    return this.executeEffect(proposal, spec, impl, tokenHash, params.actorUserId, nowIso);
+    return this.executeEffect(proposal, spec, impl, tokenHash, params.actorUserId, nowIso, params.route);
   }
 
   /** POST /agent/proposals/{id}/discard → 200. */
   async discardProposal(
     proposalId: string,
-    params: { actorUserId: string; now?: string },
+    params: { actorUserId: string; route?: RouteInfo | undefined; now?: string | undefined },
   ): Promise<{ proposal: ProposalRow; grace_cancelled?: boolean }> {
     const nowIso = params.now ?? isoNow();
     const proposal = await this.requireProposal(proposalId);
@@ -375,7 +382,7 @@ export class AgentToolsService {
         throw conflict("proposal state changed", "invalid_transition");
       }
       await this.storage.insertOutboxEvents([
-        this.event({ action: "discarded", result: "ok", userId: params.actorUserId, proposal }),
+        this.event({ action: "discarded", result: "ok", userId: params.actorUserId, proposal, route: params.route }),
       ]);
       await this.drain();
       return { proposal: (await this.requireProposal(proposalId)) };
@@ -389,7 +396,7 @@ export class AgentToolsService {
         }
         await this.storage.casProposalState(proposalId, "applied", { state: "discarded" });
         await this.storage.insertOutboxEvents([
-          this.event({ action: "discarded", result: "ok", userId: params.actorUserId, proposal }),
+          this.event({ action: "discarded", result: "ok", userId: params.actorUserId, proposal, route: params.route }),
         ]);
         await this.drain();
         return { proposal: (await this.requireProposal(proposalId)), grace_cancelled: true };
@@ -402,7 +409,7 @@ export class AgentToolsService {
   /** POST /agent/changes/{id}/revert-token → 200 {revert_token}. */
   async createRevertToken(
     changeId: string,
-    params: { actorUserId: string; orgId: string; now?: string },
+    params: { actorUserId: string; orgId: string; now?: string | undefined },
   ): Promise<{ revert_token: string }> {
     const nowIso = params.now ?? isoNow();
     const change = await this.requireChange(changeId);
@@ -429,7 +436,7 @@ export class AgentToolsService {
   /** POST /agent/changes/{id}/revert → 200. Solo dentro de undo.window_s. */
   async revertChange(
     changeId: string,
-    params: { token: string; actorUserId: string; context: ActorContext; now?: string },
+    params: { token: string; actorUserId: string; context: ActorContext; route?: RouteInfo | undefined; now?: string | undefined },
   ): Promise<{ change: ChangeRow }> {
     const nowIso = params.now ?? isoNow();
     const change = await this.requireChange(changeId);
@@ -456,7 +463,7 @@ export class AgentToolsService {
     await this.storage.updateChangeState(
       changeId,
       { state: "reverted", undone_at: nowIso },
-      [this.event({ action: "reverted", result: "ok", userId: params.actorUserId, change, ts: nowIso })],
+      [this.event({ action: "reverted", result: "ok", userId: params.actorUserId, change, ts: nowIso, route: params.route })],
     );
     await this.drain();
     return { change: (await this.requireChange(changeId)) };
@@ -465,7 +472,7 @@ export class AgentToolsService {
   /** POST /agent/changes/{id}/compensate → 200. Permitido tras la ventana. */
   async compensateChange(
     changeId: string,
-    params: { actorUserId: string; context: ActorContext; now?: string },
+    params: { actorUserId: string; context: ActorContext; route?: RouteInfo | undefined; now?: string | undefined },
   ): Promise<{ change: ChangeRow }> {
     const nowIso = params.now ?? isoNow();
     const change = await this.requireChange(changeId);
@@ -483,7 +490,7 @@ export class AgentToolsService {
     await this.storage.updateChangeState(
       changeId,
       { state: "compensated", undone_at: nowIso },
-      [this.event({ action: "compensated", result: "ok", userId: params.actorUserId, change, ts: nowIso })],
+      [this.event({ action: "compensated", result: "ok", userId: params.actorUserId, change, ts: nowIso, route: params.route })],
     );
     await this.drain();
     return { change: (await this.requireChange(changeId)) };
@@ -498,7 +505,7 @@ export class AgentToolsService {
   // ============================================================ gracia
 
   /** Ejecuta los efectos programados cuya gracia expiró. */
-  async runDueGraceJobs(params?: { now?: string }): Promise<number> {
+  async runDueGraceJobs(params?: { now?: string | undefined }): Promise<number> {
     const nowIso = params?.now ?? isoNow();
     let ran = 0;
     for (const job of await this.storage.dueGraceJobs(nowIso)) {
@@ -507,7 +514,7 @@ export class AgentToolsService {
       }
       const proposal = await this.requireProposal(job.proposal_id);
       const { spec, impl } = this.registry.get(proposal.tool);
-      const result = await this.executeEffect(proposal, spec, impl, null, proposal.user_id, nowIso);
+      const result = await this.executeEffect(proposal, spec, impl, null, proposal.user_id, nowIso, job.route as RouteInfo | undefined);
       await this.storage.casGraceJobStatus(job.job_id, "running", {
         status: "done",
         change_id: result.change_id,
@@ -543,6 +550,7 @@ export class AgentToolsService {
     appliedTokenHash: string | null,
     actorUserId: string,
     nowIso: string,
+    route?: RouteInfo,
   ): Promise<{ proposal: ProposalRow; change_id: string }> {
     const changeId = await impl.apply(proposal.input as Record<string, unknown>, proposal.id);
     if (!changeId) {
@@ -569,7 +577,7 @@ export class AgentToolsService {
     };
     // §6: change + outbox en la MISMA transacción.
     const inserted = await this.storage.insertChange(change, [
-      this.event({ action: "applied", result: "ok", userId: actorUserId, proposal, change, ts: nowIso }),
+      this.event({ action: "applied", result: "ok", userId: actorUserId, proposal, change, ts: nowIso, route }),
     ]);
     if (!inserted) {
       const existing = (await this.storage.getChangeByProposal(proposal.id))!;
@@ -589,6 +597,7 @@ export class AgentToolsService {
     spec: ToolSpec,
     actorUserId: string,
     nowIso: string,
+    route?: RouteInfo,
   ): Promise<void> {
     const ok =
       row !== null &&
@@ -599,12 +608,12 @@ export class AgentToolsService {
       tokenMatches(row as unknown as Record<string, unknown>, "app_key", spec.app_key) &&
       row.expires_at > nowIso;
     if (!ok) {
-      await this.deny(proposal, actorUserId, "token", "invalid_or_expired_token");
+      await this.deny(proposal, actorUserId, "token", "invalid_or_expired_token", route);
       throw forbidden("invalid or expired apply token", "invalid_or_expired_token");
     }
   }
 
-  private async checkEntitlement(proposal: ProposalRow, spec: ToolSpec, actorUserId: string): Promise<void> {
+  private async checkEntitlement(proposal: ProposalRow, spec: ToolSpec, actorUserId: string, route?: RouteInfo): Promise<void> {
     const decision = await this.entitlement.decide({
       orgId: proposal.org_id,
       appKey: spec.app_key,
@@ -613,12 +622,12 @@ export class AgentToolsService {
       effect: spec.effect,
     });
     if (!decision.allowed) {
-      await this.deny(proposal, actorUserId, "entitlement", decision.reason ?? "denied");
+      await this.deny(proposal, actorUserId, "entitlement", decision.reason ?? "denied", route);
       throw forbidden(decision.reason ?? "denied by entitlement", decision.reason ?? "entitlement_denied");
     }
   }
 
-  private async checkRoleAndPolicy(proposal: ProposalRow, spec: ToolSpec, actorUserId: string): Promise<void> {
+  private async checkRoleAndPolicy(proposal: ProposalRow, spec: ToolSpec, actorUserId: string, route?: RouteInfo): Promise<void> {
     if (
       !(await this.role.decide({
         orgId: proposal.org_id,
@@ -627,7 +636,7 @@ export class AgentToolsService {
         input: proposal.input,
       }))
     ) {
-      await this.deny(proposal, actorUserId, "role", "role_denied");
+      await this.deny(proposal, actorUserId, "role", "role_denied", route);
       throw forbidden("denied by role", "role_denied");
     }
     if (
@@ -639,7 +648,7 @@ export class AgentToolsService {
         estimate: proposal.estimate,
       }))
     ) {
-      await this.deny(proposal, actorUserId, "policy", "policy_denied");
+      await this.deny(proposal, actorUserId, "policy", "policy_denied", route);
       throw forbidden("denied by policy", "policy_denied");
     }
   }
@@ -680,11 +689,11 @@ export class AgentToolsService {
     }
   }
 
-  private async assertNotExpired(proposal: ProposalRow, nowIso: string): Promise<void> {
+  private async assertNotExpired(proposal: ProposalRow, nowIso: string, route?: RouteInfo): Promise<void> {
     if (proposal.expires_at <= nowIso) {
       await this.storage.casProposalState(proposal.id, proposal.state, { state: "expired" });
       await this.storage.insertOutboxEvents([
-        this.event({ action: "expired", result: "ok", userId: proposal.user_id, proposal }),
+        this.event({ action: "expired", result: "ok", userId: proposal.user_id, proposal, route }),
       ]);
       await this.drain();
       throw gone("proposal expired", "proposal_expired");
@@ -718,6 +727,7 @@ export class AgentToolsService {
     ts?: string;
     deniedLayer?: "entitlement" | "role" | "policy" | "token" | null;
     errorCode?: string | null;
+    route?: RouteInfo | undefined;
   }): AuditEvent {
     const base = params.proposal;
     const ch = params.change;
@@ -737,6 +747,10 @@ export class AgentToolsService {
       change_id: ch?.change_id ?? base?.change_id ?? null,
       payload_hash: base?.payload_hash ?? ch!.payload_hash,
       action: params.action,
+      via: params.route?.via ?? "ui",
+      client_id: params.route?.client_id ?? null,
+      client_verified: params.route?.client_verified ?? null,
+      confirm_channel: params.route?.confirm_channel ?? null,
       confirm_effective: base?.confirm_effective ?? "none",
       denied_layer: params.deniedLayer ?? null,
       cost_estimate: estimateCost(base?.estimate) ?? 0.0,
@@ -752,6 +766,7 @@ export class AgentToolsService {
     userId: string,
     layer: "entitlement" | "role" | "policy" | "token",
     code: string,
+    route?: RouteInfo,
   ): Promise<void> {
     await this.storage.insertOutboxEvents([
       this.event({
@@ -761,6 +776,7 @@ export class AgentToolsService {
         proposal,
         deniedLayer: layer,
         errorCode: code,
+        route,
       }),
     ]);
     await this.drain();

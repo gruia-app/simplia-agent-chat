@@ -16,6 +16,10 @@ export interface ChatToolsEntitlement {
   tools_allow: string[];
   max_effect: "read" | "reversible" | "irreversible";
   byo_llm: boolean;
+  /** §9.4: la org puede recibir llamadas delegadas del gateway MCP. */
+  mcp_access: boolean;
+  /** §9.3: la org permite apply/revert por elicitation (por defecto no). */
+  elicitation_apply: boolean;
   cost_threshold: CostThreshold;
 }
 
@@ -34,7 +38,15 @@ const EFFECT_ORDER: Record<string, number> = {
 
 export function entitlementFromRow(row: Record<string, unknown> | null | undefined): ChatToolsEntitlement {
   if (!row) {
-    return { enabled: false, tools_allow: [], max_effect: "read", byo_llm: false, cost_threshold: {} };
+    return {
+      enabled: false,
+      tools_allow: [],
+      max_effect: "read",
+      byo_llm: false,
+      mcp_access: false,
+      elicitation_apply: false,
+      cost_threshold: {},
+    };
   }
   const tools = row.tools_allow;
   const allow = tools === "*" ? ["*"] : Array.isArray(tools) ? (tools as string[]) : [];
@@ -44,6 +56,8 @@ export function entitlementFromRow(row: Record<string, unknown> | null | undefin
     tools_allow: allow,
     max_effect: (row.max_effect as ChatToolsEntitlement["max_effect"]) ?? "read",
     byo_llm: Boolean(row.byo_llm),
+    mcp_access: Boolean(row.mcp_access),
+    elicitation_apply: Boolean(row.elicitation_apply),
     cost_threshold: threshold,
   };
 }

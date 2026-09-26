@@ -6,7 +6,7 @@
  * insert de change+outbox va en una única transacción (§6).
  */
 
-import type { AuditEvent } from "./audit.js";
+import type { AuditEvent, RouteInfo } from "./audit.js";
 import type { ApplyTokenRow, RevertTokenRow } from "./tokens.js";
 
 export interface ProposalRow {
@@ -54,6 +54,8 @@ export interface GraceJobRow {
   status: string;
   change_id: string | null;
   created_at: string;
+  /** Canal de la acción original, para el evento applied diferido (§6 rev4). */
+  route?: RouteInfo | undefined;
 }
 
 export interface OutboxRow {
@@ -90,6 +92,15 @@ export interface Storage {
   casGraceJobStatus(jobId: string, fromStatus: string, updates: Partial<GraceJobRow>): Promise<boolean>;
   getGraceJobByProposal(proposalId: string): Promise<GraceJobRow | null>;
 
+  // -- jti del gateway (§9.4) --
+
+  /** Registra un jti de aserción usado. False si ya existía (replay → 401). */
+  insertGatewayJti(jti: string, expiresAt: string): Promise<boolean>;
+  /** Borra jti expirados; solo hay que conservarlos durante su exp. */
+  purgeGatewayJtis(nowIso: string): Promise<number>;
+
+  // -- audit outbox (§6) --
+
   /** Idempotente por event_id; devuelve cuántos se insertaron. */
   insertOutboxEvents(events: AuditEvent[]): Promise<number>;
   undeliveredOutbox(limit: number): Promise<OutboxRow[]>;
@@ -105,6 +116,7 @@ export class MemoryStorage implements Storage {
   private readonly changes = new Map<string, ChangeRow>();
   private readonly graceJobs = new Map<string, GraceJobRow>();
   private readonly outbox = new Map<string, OutboxRow>();
+  private readonly gatewayJtis = new Map<string, string>();
 
   async insertProposal(p: ProposalRow): Promise<void> {
     this.proposals.set(p.id, structuredClone(p));
@@ -212,6 +224,23 @@ export class MemoryStorage implements Storage {
       .filter((j) => j.proposal_id === proposalId)
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
     return rows[0] ? { ...rows[0] } : null;
+  }
+
+  async insertGatewayJti(jti: string, expiresAt: string): Promise<boolean> {
+    if (this.gatewayJtis.has(jti)) return false; // replay §9.4
+    this.gatewayJtis.set(jti, expiresAt);
+    return true;
+  }
+
+  async purgeGatewayJtis(nowIso: string): Promise<number> {
+    let n = 0;
+    for (const [jti, exp] of this.gatewayJtis) {
+      if (exp <= nowIso) {
+        this.gatewayJtis.delete(jti);
+        n += 1;
+      }
+    }
+    return n;
   }
 
   private _insertOutbox(event: AuditEvent): boolean {

@@ -35,6 +35,10 @@ export const AUDIT_FIELDS = [
   "change_id",
   "payload_hash",
   "action",
+  "via",
+  "client_id",
+  "client_verified",
+  "confirm_channel",
   "confirm_effective",
   "denied_layer",
   "cost_estimate",
@@ -45,6 +49,17 @@ export const AUDIT_FIELDS = [
 ] as const;
 
 export type CostUnit = "credits" | "money_cents";
+export type AuditVia = "ui" | "mcp" | "cli";
+export type ConfirmChannel = "ui" | "review_url" | "elicitation" | "cli_tty";
+
+/** Canal por el que llegó la acción (§6 rev 4): lo fija el transporte
+ * autenticado (UI, gateway MCP, CLI), nunca el cliente. */
+export interface RouteInfo {
+  via?: AuditVia;
+  client_id?: string | null;
+  client_verified?: boolean | null;
+  confirm_channel?: ConfirmChannel | null;
+}
 
 export interface AuditEventParams {
   ts: string;
@@ -57,6 +72,10 @@ export interface AuditEventParams {
   action: AuditAction;
   confirm_effective: string;
   result: "ok" | "error";
+  via?: AuditVia;
+  client_id?: string | null;
+  client_verified?: boolean | null;
+  confirm_channel?: ConfirmChannel | null;
   change_id?: string | null;
   denied_layer?: "entitlement" | "role" | "policy" | "token" | null;
   cost_estimate?: number;
@@ -85,6 +104,10 @@ export function buildAuditEvent(p: AuditEventParams): AuditEvent {
     change_id: p.change_id ?? null,
     payload_hash: p.payload_hash,
     action: p.action,
+    via: p.via ?? "ui",
+    client_id: p.client_id ?? null,
+    client_verified: p.client_verified ?? null,
+    confirm_channel: p.confirm_channel ?? null,
     confirm_effective: p.confirm_effective,
     denied_layer: p.denied_layer ?? null,
     cost_estimate: p.cost_estimate ?? 0.0,

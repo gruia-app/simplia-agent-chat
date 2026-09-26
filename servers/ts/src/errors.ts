@@ -15,6 +15,8 @@ export class ContractError extends Error {
 
 export const badRequest = (message: string, code = "bad_request") =>
   new ContractError(code, message, 400);
+export const unauthorized = (message: string, code = "unauthorized") =>
+  new ContractError(code, message, 401);
 export const forbidden = (message: string, code = "forbidden") =>
   new ContractError(code, message, 403);
 export const notFound = (message: string, code = "not_found") =>
