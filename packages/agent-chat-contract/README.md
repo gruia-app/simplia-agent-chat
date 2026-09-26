@@ -1,6 +1,6 @@
 # @simplia/agent-chat-contract
 
-Fuente única de verdad del contrato chat-céntrico (**SPEC-CHAT-F1-R687 rev 4/5**, CEO-PSAAS-R696; rev 5 pendiente de revisión PLAT): JSON Schema draft 2020-12 de `ToolSpec`, `Proposal`, `ProposalRef`, `ChangeRecord`, `AuditEvent` y `ViewEvent`, con los tipos TypeScript generados desde el esquema, el validador de las reglas cruzadas de §2, la proyección MCP 1:1 de §9 y fixtures válidas/inválidas.
+Fuente única de verdad del contrato chat-céntrico (**SPEC-CHAT-F1-R687 rev 5**, CEO-PSAAS-R696 + PLAT-R696-01): JSON Schema draft 2020-12 de `ToolSpec`, `Proposal`, `ProposalRef`, `ChangeRecord`, `AuditEvent` y `ViewEvent`, con los tipos TypeScript generados desde el esquema, el validador de las reglas cruzadas de §2, la proyección MCP 1:1 de §9 y fixtures válidas/inválidas.
 
 ## Contenido
 

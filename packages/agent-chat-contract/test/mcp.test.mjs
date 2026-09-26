@@ -70,3 +70,10 @@ test("fromMcpName rejects malformed names", () => {
     assert.throws(() => fromMcpName(bad), undefined, bad);
   }
 });
+
+test("system tool names use the reserved proposal namespace (§9.3)", () => {
+  for (const verb of ["apply", "revert", "get"]) {
+    const parts = fromMcpName(`insaidr__proposal__${verb}`);
+    assert.deepEqual(parts, { app_key: "insaidr", ns: "proposal", verb });
+  }
+});
