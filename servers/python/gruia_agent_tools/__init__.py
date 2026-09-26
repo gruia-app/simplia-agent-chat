@@ -32,8 +32,18 @@ from .entitlement import (
     StubEntitlement,
 )
 from .errors import ContractError
+from .gateway import DelegatedAssertion, DelegatedGateway, issue_test_assertion
+from .mcp import (
+    MCP_NAME_MAX_LENGTH,
+    MCP_NAME_PATTERN,
+    MCP_SEPARATOR,
+    RESERVED_NAMESPACES,
+    from_mcp_name,
+    to_mcp_name,
+    to_mcp_tool,
+)
 from .registry import ToolRegistry
-from .service import AgentToolsService
+from .service import AgentToolsService, RouteInfo
 from .storage.sql import PostgresStorage, SqliteStorage
 from .tokens import hash_token
 
@@ -46,19 +56,30 @@ __all__ = [
     "ContractErrorItem",
     "ContractValidationError",
     "CostThreshold",
+    "DelegatedAssertion",
+    "DelegatedGateway",
     "EntitlementDecision",
     "HttpAuditSink",
     "HttpEntitlementChecker",
     "JsonLinesSink",
+    "MCP_NAME_MAX_LENGTH",
+    "MCP_NAME_PATTERN",
+    "MCP_SEPARATOR",
     "OutboxDrainer",
     "PostgresStorage",
+    "RESERVED_NAMESPACES",
+    "RouteInfo",
     "SqliteStorage",
     "StubEntitlement",
     "ToolRegistry",
     "assert_valid",
     "build_audit_event",
+    "to_mcp_name",
+    "to_mcp_tool",
     "default_schema_dir",
+    "from_mcp_name",
     "hash_token",
+    "issue_test_assertion",
     "load_schemas",
     "validate_document",
     "validate_entity",

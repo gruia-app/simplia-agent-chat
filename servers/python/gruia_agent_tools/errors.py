@@ -16,6 +16,10 @@ def bad_request(message: str, code: str = "bad_request") -> ContractError:
     return ContractError(code, message, 400)
 
 
+def unauthorized(message: str, code: str = "unauthorized") -> ContractError:
+    return ContractError(code, message, 401)
+
+
 def forbidden(message: str, code: str = "forbidden") -> ContractError:
     return ContractError(code, message, 403)
 

@@ -11,6 +11,7 @@ from gruia_agent_tools.contract import validate_document
 
 from .conftest import (
     ORG,
+    PROPOSAL_REF_SCHEMA,
     USER,
     accept,
     apply_,
@@ -86,6 +87,7 @@ def _grace_registry(service, reversible_tool):
         "confirm": "card",
         "undo": {"mode": "revert", "window_s": 300, "grace_s": 60},
         "app_key": "insaidr",
+        "output_schema": PROPOSAL_REF_SCHEMA,
     }
     service.registry.register(spec, reversible_tool)
     return spec

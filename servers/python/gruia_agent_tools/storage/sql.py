@@ -81,6 +81,10 @@ CREATE TABLE IF NOT EXISTS audit_outbox (
     delivered_at TEXT,
     attempts INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS gateway_jtis (
+    jti TEXT PRIMARY KEY,
+    expires_at TEXT NOT NULL
+);
 """
 
 
@@ -267,6 +271,21 @@ class SqlStorage(Storage):
             "SELECT * FROM grace_jobs WHERE proposal_id = ? ORDER BY created_at DESC",
             (proposal_id,),
         )
+
+    # -- jti del gateway (§9.4) ------------------------------------------
+    def insert_gateway_jti(self, jti: str, expires_at: str) -> bool:
+        """INSERT OR IGNORE: False si el jti ya existía (replay → 401)."""
+        with self._write_lock, _tx(self.conn):
+            cur = self._q(
+                """INSERT INTO gateway_jtis (jti, expires_at)
+                SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM gateway_jtis WHERE jti = ?)""",
+                (jti, expires_at, jti),
+            )
+            return cur.rowcount == 1
+
+    def purge_gateway_jtis(self, now_iso: str) -> int:
+        with self._write_lock, _tx(self.conn):
+            return self._q("DELETE FROM gateway_jtis WHERE expires_at <= ?", (now_iso,)).rowcount
 
     # -- audit outbox ----------------------------------------------------
     def _insert_outbox_locked(self, events: Iterable[dict[str, Any]]) -> int:

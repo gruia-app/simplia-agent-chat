@@ -81,6 +81,20 @@ class Storage(abc.ABC):
     def get_grace_job_by_proposal(self, proposal_id: str) -> dict[str, Any] | None: ...
 
     # -- audit outbox ----------------------------------------------------
+    # ------------------------------ jti del gateway (§9.4)
+
+    @abc.abstractmethod
+    def insert_gateway_jti(self, jti: str, expires_at: str) -> bool:
+        """Registra un jti de aserción usado. False si ya existía (replay → 401)."""
+        ...
+
+    @abc.abstractmethod
+    def purge_gateway_jtis(self, now_iso: str) -> int:
+        """Borra jti expirados; solo hay que conservarlos durante su exp."""
+        ...
+
+    # ------------------------------ outbox (§6)
+
     @abc.abstractmethod
     def insert_outbox_events(self, events: Iterable[dict[str, Any]]) -> int:
         """Idempotente por event_id (§6). Devuelve cuántos se insertaron."""

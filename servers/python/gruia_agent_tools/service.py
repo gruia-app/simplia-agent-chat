@@ -13,6 +13,7 @@ la sesión autenticada del transporte (X-Actor-Context o equivalente).
 from __future__ import annotations
 
 import uuid
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Protocol
 
@@ -46,6 +47,31 @@ class PolicyChecker(Protocol):
 class _AllowAll:
     def decide(self, **kwargs) -> bool:
         return True
+
+
+@dataclass(frozen=True)
+class RouteInfo:
+    """Canal por el que llegó la acción (§6 rev 4): lo fija el transporte
+    autenticado (UI, gateway MCP, CLI), nunca el cliente."""
+
+    via: str = "ui"  # ui | mcp | cli
+    client_id: str | None = None
+    client_verified: bool | None = None
+    confirm_channel: str | None = None  # ui|review_url|elicitation|cli_tty|null
+
+    @classmethod
+    def from_row(cls, row: dict[str, Any] | None) -> "RouteInfo":
+        row = row or {}
+        return cls(
+            via=row.get("via") or "ui",
+            client_id=row.get("client_id"),
+            client_verified=row.get("client_verified"),
+            confirm_channel=row.get("confirm_channel"),
+        )
+
+
+def _route_dict(route: RouteInfo) -> dict[str, Any]:
+    return asdict(route)
 
 
 def payload_hash_of(input: dict[str, Any]) -> str:
@@ -121,6 +147,7 @@ class AgentToolsService:
         plan_id: str | None = None,
         step: int | None = None,
         ttl_s: int = 300,
+        route: RouteInfo | None = None,
         now: datetime | None = None,
     ) -> dict:
         """POST /agent/proposals → 201 {proposal}."""
@@ -180,7 +207,7 @@ class AgentToolsService:
             [
                 self._event(
                     action="proposed", proposal=proposal, result="ok",
-                    user_id=user_id, ts=tokens.iso(ts),
+                    user_id=user_id, ts=tokens.iso(ts), route=route,
                 )
             ]
         )
@@ -188,13 +215,14 @@ class AgentToolsService:
         return {"proposal": proposal}
 
     def modify_proposal(
-        self, proposal_id: str, *, new_input: dict[str, Any], actor_user_id: str, now: datetime | None = None
+        self, proposal_id: str, *, new_input: dict[str, Any], actor_user_id: str,
+        route: RouteInfo | None = None, now: datetime | None = None,
     ) -> dict:
         """POST /agent/proposals/{id}/modify → 201 {proposal} (supersedes)."""
         ts = now or datetime.now(timezone.utc)
         proposal = self._get_proposal(proposal_id)
         self._assert_actor(proposal, actor_user_id)
-        self._assert_not_expired(proposal, ts)
+        self._assert_not_expired(proposal, ts, route=route)
 
         if not self.storage.cas_proposal_state(proposal_id, "proposed", {"state": "discarded"}):
             # ya no está proposed: o applied (409) o transición concurrente
@@ -202,7 +230,7 @@ class AgentToolsService:
                 raise conflict("proposal already applied", "proposal_applied")
             raise conflict("proposal not in proposed state", "invalid_transition")
         self.storage.insert_outbox_events(
-            [self._event(action="discarded", proposal=proposal, result="ok", user_id=actor_user_id)]
+            [self._event(action="discarded", proposal=proposal, result="ok", user_id=actor_user_id, route=route)]
         )
         self._drain()
 
@@ -249,7 +277,7 @@ class AgentToolsService:
         }
         self.storage.insert_proposal(new_proposal)
         self.storage.insert_outbox_events(
-            [self._event(action="proposed", proposal=new_proposal, result="ok", user_id=actor_user_id)]
+            [self._event(action="proposed", proposal=new_proposal, result="ok", user_id=actor_user_id, route=route)]
         )
         self._drain()
         return {"proposal": new_proposal}
@@ -261,6 +289,7 @@ class AgentToolsService:
         actor_user_id: str,
         context: str,
         ack: str | None = None,
+        route: RouteInfo | None = None,
         now: datetime | None = None,
     ) -> dict:
         """POST /agent/proposals/{id}/accept → 200 {apply_token}.
@@ -274,10 +303,10 @@ class AgentToolsService:
         spec, _ = self.registry.get(proposal["tool"])
 
         if context == "model_context":
-            self._deny(proposal, actor_user_id, layer="token", code="model_context_apply")
+            self._deny(proposal, actor_user_id, layer="token", code="model_context_apply", route=route)
             raise forbidden("model context cannot accept proposals", "model_context_apply")
 
-        self._assert_not_expired(proposal, ts)
+        self._assert_not_expired(proposal, ts, route=route)
         if proposal["state"] != "proposed":
             raise conflict("proposal not in proposed state", "invalid_transition")
 
@@ -287,7 +316,7 @@ class AgentToolsService:
             raise bad_request(
                 "strong confirmation requires an explicit ack", "ack_required"
             )
-        self._check_entitlement(proposal, spec, actor_user_id)
+        self._check_entitlement(proposal, spec, actor_user_id, route=route)
 
         if not self.storage.cas_proposal_state(proposal_id, "proposed", {"state": "accepted"}):
             raise conflict("proposal not in proposed state", "invalid_transition")
@@ -302,7 +331,7 @@ class AgentToolsService:
         )
         self.storage.insert_apply_token(row)
         self.storage.insert_outbox_events(
-            [self._event(action="accepted", proposal=proposal, result="ok", user_id=actor_user_id)]
+            [self._event(action="accepted", proposal=proposal, result="ok", user_id=actor_user_id, route=route)]
         )
         self._drain()
         return {"apply_token": token, "proposal_id": proposal_id}
@@ -315,6 +344,7 @@ class AgentToolsService:
         actor_user_id: str,
         context: str,
         ack: str | None = None,
+        route: RouteInfo | None = None,
         now: datetime | None = None,
     ) -> dict:
         """POST /agent/proposals/{id}/apply → 200 {proposal, change_id}.
@@ -329,7 +359,7 @@ class AgentToolsService:
 
         # §4: el contexto lo fija el servidor (cabecera), no el cliente.
         if context == "model_context":
-            self._deny(proposal, actor_user_id, layer="token", code="model_context_apply")
+            self._deny(proposal, actor_user_id, layer="token", code="model_context_apply", route=route)
             raise forbidden("model context cannot apply proposals", "model_context_apply")
 
         token_hash = tokens.hash_token(token)
@@ -342,7 +372,7 @@ class AgentToolsService:
             change = self.storage.get_change_by_proposal(proposal_id)
             if change and change["applied_token_hash"] == token_hash:
                 return {"proposal": self._get_proposal(proposal_id), "change_id": change["change_id"]}
-            self._deny(proposal, actor_user_id, layer="token", code="token_already_used")
+            self._deny(proposal, actor_user_id, layer="token", code="token_already_used", route=route)
             raise forbidden("apply token already used", "token_already_used")
 
         # §4: irreversible exige la confirmación strong también en el apply.
@@ -350,17 +380,17 @@ class AgentToolsService:
             raise bad_request(
                 "strong confirmation requires an explicit ack", "ack_required"
             )
-        self._validate_apply_token(token_row, proposal, spec, actor_user_id, ts)
-        self._check_entitlement(proposal, spec, actor_user_id)
-        self._check_role_and_policy(proposal, spec, actor_user_id)
+        self._validate_apply_token(token_row, proposal, spec, actor_user_id, ts, route=route)
+        self._check_entitlement(proposal, spec, actor_user_id, route=route)
+        self._check_role_and_policy(proposal, spec, actor_user_id, route=route)
         self._check_cost_reestimate(proposal, spec, impl)
-        self._assert_not_expired(proposal, ts)
+        self._assert_not_expired(proposal, ts, route=route)
         if proposal["state"] != "accepted":
             raise conflict("proposal not in accepted state", "invalid_transition")
 
         # CAS: solo una llamada consume el token (§4 concurrencia).
         if not self.storage.consume_apply_token(token_hash, now_iso):
-            self._deny(proposal, actor_user_id, layer="token", code="token_already_used")
+            self._deny(proposal, actor_user_id, layer="token", code="token_already_used", route=route)
             raise forbidden("apply token already used", "token_already_used")
 
         undo = spec["undo"]
@@ -373,6 +403,7 @@ class AgentToolsService:
                 "status": "pending",
                 "change_id": None,
                 "created_at": now_iso,
+                "route": _route_dict(route or RouteInfo()),
             }
             self.storage.insert_grace_job(grace_job)
             self.storage.cas_proposal_state(proposal_id, "accepted", {"state": "applied"})
@@ -383,10 +414,11 @@ class AgentToolsService:
                 "grace_until": grace_job["run_at"],
             }
 
-        return self._execute_effect(proposal, spec, impl, token_hash, actor_user_id, ts)
+        return self._execute_effect(proposal, spec, impl, token_hash, actor_user_id, ts, route=route)
 
     def discard_proposal(
-        self, proposal_id: str, *, actor_user_id: str, now: datetime | None = None
+        self, proposal_id: str, *, actor_user_id: str,
+        route: RouteInfo | None = None, now: datetime | None = None,
     ) -> dict:
         """POST /agent/proposals/{id}/discard → 200.
 
@@ -403,7 +435,7 @@ class AgentToolsService:
             ):
                 raise conflict("proposal state changed", "invalid_transition")
             self.storage.insert_outbox_events(
-                [self._event(action="discarded", proposal=proposal, result="ok", user_id=actor_user_id)]
+                [self._event(action="discarded", proposal=proposal, result="ok", user_id=actor_user_id, route=route)]
             )
             self._drain()
             return {"proposal": self._get_proposal(proposal_id)}
@@ -416,7 +448,7 @@ class AgentToolsService:
                     raise conflict("grace job already executed", "grace_expired")
                 self.storage.cas_proposal_state(proposal_id, "applied", {"state": "discarded"})
                 self.storage.insert_outbox_events(
-                    [self._event(action="discarded", proposal=proposal, result="ok", user_id=actor_user_id)]
+                    [self._event(action="discarded", proposal=proposal, result="ok", user_id=actor_user_id, route=route)]
                 )
                 self._drain()
                 return {"proposal": self._get_proposal(proposal_id), "grace_cancelled": True}
@@ -444,7 +476,8 @@ class AgentToolsService:
         return {"revert_token": token}
 
     def revert_change(
-        self, change_id: str, *, token: str, actor_user_id: str, context: str, now: datetime | None = None
+        self, change_id: str, *, token: str, actor_user_id: str, context: str,
+        route: RouteInfo | None = None, now: datetime | None = None,
     ) -> dict:
         """POST /agent/changes/{id}/revert → 200. Solo dentro de undo.window_s."""
         ts = now or datetime.now(timezone.utc)
@@ -473,7 +506,7 @@ class AgentToolsService:
             [
                 self._event(
                     action="reverted", change=change, result="ok",
-                    user_id=actor_user_id, ts=tokens.iso(ts),
+                    user_id=actor_user_id, ts=tokens.iso(ts), route=route,
                 )
             ],
         )
@@ -481,7 +514,8 @@ class AgentToolsService:
         return {"change": self.storage.get_change(change_id)}
 
     def compensate_change(
-        self, change_id: str, *, actor_user_id: str, context: str, now: datetime | None = None
+        self, change_id: str, *, actor_user_id: str, context: str,
+        route: RouteInfo | None = None, now: datetime | None = None,
     ) -> dict:
         """POST /agent/changes/{id}/compensate → 200. Permitido tras la ventana."""
         ts = now or datetime.now(timezone.utc)
@@ -501,7 +535,7 @@ class AgentToolsService:
             [
                 self._event(
                     action="compensated", change=change, result="ok",
-                    user_id=actor_user_id, ts=tokens.iso(ts),
+                    user_id=actor_user_id, ts=tokens.iso(ts), route=route,
                 )
             ],
         )
@@ -530,6 +564,7 @@ class AgentToolsService:
             result = self._execute_effect(
                 proposal, spec, impl, applied_token_hash=None,
                 actor_user_id=proposal["user_id"], ts=ts,
+                route=RouteInfo.from_row(job.get("route")),
             )
             self.storage.cas_grace_job_status(
                 job["job_id"], "running", {"status": "done", "change_id": result["change_id"]}
@@ -539,7 +574,7 @@ class AgentToolsService:
 
     # ========================================================== internos
 
-    def _execute_effect(self, proposal, spec, impl, applied_token_hash, actor_user_id, ts) -> dict:
+    def _execute_effect(self, proposal, spec, impl, applied_token_hash, actor_user_id, ts, route=None) -> dict:
         now_iso = tokens.iso(ts)
         change_id = impl.apply(proposal["input"], idempotency_key=proposal["id"])
         if not change_id:
@@ -570,7 +605,7 @@ class AgentToolsService:
             [
                 self._event(
                     action="applied", proposal=proposal, change=change,
-                    result="ok", user_id=actor_user_id, ts=now_iso,
+                    result="ok", user_id=actor_user_id, ts=now_iso, route=route,
                 )
             ],
         ):
@@ -583,7 +618,7 @@ class AgentToolsService:
         self._drain()
         return {"proposal": self._get_proposal(proposal["id"]), "change_id": change_id}
 
-    def _validate_apply_token(self, row, proposal, spec, actor_user_id, ts) -> None:
+    def _validate_apply_token(self, row, proposal, spec, actor_user_id, ts, route=None) -> None:
         """§4: un solo uso, ligado a proposal_id+payload_hash+user+org+app,
         TTL <=120 s. Cualquier fallo → 403 + audit denied layer=token."""
         ok = (
@@ -596,32 +631,32 @@ class AgentToolsService:
             and row["expires_at"] > tokens.iso(ts)
         )
         if not ok:
-            self._deny(proposal, actor_user_id, layer="token", code="invalid_or_expired_token")
+            self._deny(proposal, actor_user_id, layer="token", code="invalid_or_expired_token", route=route)
             raise forbidden("invalid or expired apply token", "invalid_or_expired_token")
 
-    def _check_entitlement(self, proposal, spec, actor_user_id) -> None:
+    def _check_entitlement(self, proposal, spec, actor_user_id, route=None) -> None:
         decision = self.entitlement.decide(
             org_id=proposal["org_id"], app_key=spec["app_key"], user_id=actor_user_id,
             tool_name=proposal["tool"], effect=spec["effect"],
         )
         if not decision.allowed:
             self._deny(
-                proposal, actor_user_id, layer="entitlement", code=decision.reason or "denied"
+                proposal, actor_user_id, layer="entitlement", code=decision.reason or "denied", route=route
             )
             raise forbidden(decision.reason or "denied by entitlement", decision.reason or "entitlement_denied")
 
-    def _check_role_and_policy(self, proposal, spec, actor_user_id) -> None:
+    def _check_role_and_policy(self, proposal, spec, actor_user_id, route=None) -> None:
         if not self.role.decide(
             org_id=proposal["org_id"], user_id=actor_user_id,
             tool_name=proposal["tool"], input=proposal["input"],
         ):
-            self._deny(proposal, actor_user_id, layer="role", code="role_denied")
+            self._deny(proposal, actor_user_id, layer="role", code="role_denied", route=route)
             raise forbidden("denied by role", "role_denied")
         if not self.policy.decide(
             org_id=proposal["org_id"], user_id=actor_user_id, toolspec=spec,
             preview=proposal.get("preview"), estimate=proposal.get("estimate"),
         ):
-            self._deny(proposal, actor_user_id, layer="policy", code="policy_denied")
+            self._deny(proposal, actor_user_id, layer="policy", code="policy_denied", route=route)
             raise forbidden("denied by policy", "policy_denied")
 
     def _check_cost_reestimate(self, proposal, spec, impl) -> None:
@@ -658,12 +693,12 @@ class AgentToolsService:
         if ts > deadline:
             raise gone("undo window expired", "undo_window_expired")
 
-    def _assert_not_expired(self, proposal, ts) -> None:
+    def _assert_not_expired(self, proposal, ts, route=None) -> None:
         if proposal["expires_at"] <= tokens.iso(ts):
             # §3: transición pasiva → expired + audit
             self.storage.cas_proposal_state(proposal["id"], proposal["state"], {"state": "expired"})
             self.storage.insert_outbox_events(
-                [self._event(action="expired", proposal=proposal, result="ok", user_id=proposal["user_id"])]
+                [self._event(action="expired", proposal=proposal, result="ok", user_id=proposal["user_id"], route=route)]
             )
             self._drain()
             raise gone("proposal expired", "proposal_expired")
@@ -684,7 +719,7 @@ class AgentToolsService:
         if proposal["user_id"] != actor_user_id:
             raise forbidden("actor does not own this proposal", "forbidden")
 
-    def _event(self, *, action, result, user_id, proposal=None, change=None, ts=None, error_code=None):
+    def _event(self, *, action, result, user_id, proposal=None, change=None, ts=None, error_code=None, route=None):
         base = proposal or {}
         ch = change or {}
         estimate = base.get("estimate")
@@ -696,6 +731,7 @@ class AgentToolsService:
             or _estimate_unit(estimate, spec["cost"]["kind"])
             or "credits"
         )
+        rt = route or RouteInfo()
         return audit_mod.build_audit_event(
             ts=ts or _iso_now(),
             org_id=base.get("org_id") or ch.get("org_id"),
@@ -706,6 +742,10 @@ class AgentToolsService:
             change_id=ch.get("change_id") or base.get("change_id"),
             payload_hash=base.get("payload_hash") or ch.get("payload_hash"),
             action=action,
+            via=rt.via,
+            client_id=rt.client_id,
+            client_verified=rt.client_verified,
+            confirm_channel=rt.confirm_channel,
             confirm_effective=base.get("confirm_effective") or "none",
             denied_layer=None,
             cost_estimate=_estimate_cost(estimate) or 0.0,
@@ -715,14 +755,14 @@ class AgentToolsService:
             error_code=error_code,
         )
 
-    def _deny(self, proposal, user_id, *, layer, code) -> None:
+    def _deny(self, proposal, user_id, *, layer, code, route=None) -> None:
         """§4: cada negación produce un AuditEvent denied con denied_layer."""
         self.storage.insert_outbox_events(
             [
                 {
                     **self._event(
                         action="denied", proposal=proposal, result="error",
-                        user_id=user_id, ts=None, error_code=code,
+                        user_id=user_id, ts=None, error_code=code, route=route,
                     ),
                     "denied_layer": layer,
                 }

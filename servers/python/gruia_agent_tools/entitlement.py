@@ -28,6 +28,8 @@ class ChatToolsEntitlement:
     tools_allow: tuple[str, ...] = ()
     max_effect: str = "read"
     byo_llm: bool = False
+    mcp_access: bool = False
+    elicitation_apply: bool = False
     cost_threshold: CostThreshold = field(default_factory=CostThreshold)
 
     @classmethod
@@ -41,6 +43,8 @@ class ChatToolsEntitlement:
             tools_allow=tuple(tools if tools != "*" else ("*",)),
             max_effect=row.get("max_effect") or "read",
             byo_llm=bool(row.get("byo_llm")),
+            mcp_access=bool(row.get("mcp_access")),
+            elicitation_apply=bool(row.get("elicitation_apply")),
             cost_threshold=CostThreshold(
                 credits=threshold.get("credits"),
                 money_cents=threshold.get("money_cents"),

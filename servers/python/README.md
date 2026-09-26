@@ -1,8 +1,9 @@
 # gruia-agent-tools (Python)
 
 Librería de servidor del contrato de herramientas del agente
-(`SPEC-CHAT-F1-R687` rev 3). Implementa §4 (seguridad y apply), §6
-(auditoría y outbox), §7 (tests de token) y §8 (entitlement `chat_tools`).
+(`SPEC-CHAT-F1-R687` rev 4/5). Implementa §4 (seguridad y apply), §6
+(auditoría y outbox), §7 (tests de token), §8 (entitlement `chat_tools`)
+y §9 (modo delegado del gateway + proyección MCP).
 
 El contrato normativo vive en `packages/agent-chat-contract` (JSON Schema
 draft 2020-12 + fixtures). Este paquete valida contra **los mismos**
@@ -29,7 +30,17 @@ esquemas y fixtures — no hay segunda fuente de verdad.
   `preview`), outbox local at-least-once con dedup por `event_id`,
   `OutboxDrainer` con sink de log JSON o `HttpAuditSink` (forma de F2).
 - `storage` — interfaz `Storage` + implementación SQL de referencia:
-  `SqliteStorage` (tests) y `PostgresStorage` (misma SQL, `%s`).
+  `SqliteStorage` (tests) y `PostgresStorage` (misma SQL, `%s`), incluida
+  la tabla `gateway_jtis` para el jti de un solo uso de §9.4.
+- `mcp` — `to_mcp_tool`/`to_mcp_name`/`from_mcp_name`: proyección MCP
+  2025-06-18 de §9.1 con paridad 1:1 al paquete TS.
+- `gateway.DelegatedGateway` — modo delegado §9.3/§9.4: verifica la
+  aserción firmada por el kernel (JWT RS256, `aud=app_key`, `exp-iat<=60s`,
+  `jti` de un solo uso → 401 en replay), exige token de servicio + aserción
+  (sin aserción → 401), scopes `app:`/`tool:`/`tool:*` + entitlement
+  `mcp_access`, herramientas de sistema `proposal__apply|revert|get` con
+  elicitation solo si `reversible` + `card` + org activada + cliente
+  verificado (si no, `review_url` sin token) y anti-IDOR → 404.
 
 ## Garantías (§4/§6/§7)
 

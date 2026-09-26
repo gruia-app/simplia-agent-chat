@@ -1,9 +1,12 @@
 """Validación contra los JSON Schema del paquete de contrato
-(packages/agent-chat-contract/schema, SPEC-CHAT-F1-R687 rev 3) con los
+(packages/agent-chat-contract/schema, SPEC-CHAT-F1-R687 rev 4/5) con los
 mismos códigos de error que el validador TS.
 
 schema errors -> ``schema:<keyword>``; reglas cruzadas -> códigos estables
-(read_requires_confirm_none, ..., cost_actual_requires_cost_unit).
+(read_requires_confirm_none, ..., cost_actual_requires_cost_unit,
+read_requires_output_schema, write_requires_proposal_ref_output,
+forbidden_double_underscore, reserved_namespace_proposal,
+mcp_projection_too_long).
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ SCHEMA_FILES = {
     "change-record": "change-record.schema.json",
     "audit-event": "audit-event.schema.json",
     "view-event": "view-event.schema.json",
+    "proposal-ref": "proposal-ref.schema.json",
 }
 
 CONTRACT_ENTITIES = tuple(SCHEMA_FILES.keys())
@@ -110,8 +114,20 @@ def validate_entity(entity: str, document: Any, schemas: dict[str, Any] | None =
     return _schema_errors(schema, document)
 
 
-def validate_toolspec_rules(spec: dict[str, Any]) -> list[ContractErrorItem]:
-    """Reglas cruzadas de §2 (paridad con validateToolSpecRules de TS)."""
+def _deep_equal(a: Any, b: Any) -> bool:
+    if a is b:
+        return True
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(_deep_equal(a[k], b[k]) for k in a)
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(_deep_equal(x, y) for x, y in zip(a, b))
+    return bool(a == b) if type(a) is type(b) else False
+
+
+def validate_toolspec_rules(
+    spec: dict[str, Any], schemas: dict[str, Any] | None = None
+) -> list[ContractErrorItem]:
+    """Reglas cruzadas de §2 + §9.1 (paridad con validateToolSpecRules de TS)."""
     errors: list[ContractErrorItem] = []
 
     def push(code: str, message: str, path: str) -> None:
@@ -144,6 +160,43 @@ def validate_toolspec_rules(spec: dict[str, Any]) -> list[ContractErrorItem]:
     cost = spec.get("cost") or {}
     if cost.get("kind") not in (None, "none") and cost.get("estimator") is not True:
         push("cost_kind_requires_estimator", 'cost.kind other than "none" requires estimator true', "/cost/estimator")
+
+    # rev 4/5 §2/§9.1: output_schema y restricción de nombres.
+    app_key = spec.get("app_key") or ""
+    name = spec.get("name") or ""
+    ns, _, verb = name.partition(".")
+    if "__" in app_key or "__" in ns or "__" in verb:
+        push(
+            "forbidden_double_underscore",
+            'app_key, namespace and verb must not contain "__"',
+            "/name",
+        )
+    if ns == "proposal":
+        push(
+            "reserved_namespace_proposal",
+            'namespace "proposal" is reserved for system tools',
+            "/name",
+        )
+    if app_key and name and len(f"{app_key}__{ns}__{verb}") > 64:
+        push(
+            "mcp_projection_too_long",
+            "MCP projection <app_key>__<ns>__<verb> exceeds 64 characters",
+            "/name",
+        )
+    if effect == "read" and spec.get("output_schema") is None:
+        push(
+            "read_requires_output_schema",
+            'effect "read" requires output_schema',
+            "/output_schema",
+        )
+    if effect in ("reversible", "irreversible"):
+        proposal_ref = (schemas or load_schemas()).get("proposal-ref") or {}
+        if not _deep_equal(spec.get("output_schema"), proposal_ref):
+            push(
+                "write_requires_proposal_ref_output",
+                "writing tools must declare output_schema equal to the ProposalRef schema",
+                "/output_schema",
+            )
     return errors
 
 
@@ -168,7 +221,7 @@ def validate_document(entity: str, document: Any, schemas: dict[str, Any] | None
     if schema_errors:
         return schema_errors
     if entity == "tool-spec":
-        return validate_toolspec_rules(document)
+        return validate_toolspec_rules(document, schemas)
     if entity == "change-record":
         return validate_change_record_rules(document)
     return []

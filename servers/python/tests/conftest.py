@@ -19,7 +19,10 @@ from gruia_agent_tools import (  # noqa: E402
     SqliteStorage,
     StubEntitlement,
     ToolRegistry,
+    load_schemas,
 )
+
+PROPOSAL_REF_SCHEMA = load_schemas()["proposal-ref"]
 
 ORG = "org-1"
 OTHER_ORG = "org-2"
@@ -41,6 +44,7 @@ REVERSIBLE_SPEC = {
     "confirm": "card",
     "undo": {"mode": "revert", "window_s": 300, "grace_s": 0},
     "app_key": APP,
+    "output_schema": PROPOSAL_REF_SCHEMA,
 }
 
 IRREVERSIBLE_SPEC = {
@@ -57,6 +61,7 @@ IRREVERSIBLE_SPEC = {
     "confirm": "strong",
     "undo": {"mode": "compensate", "window_s": 0, "grace_s": 0},
     "app_key": APP,
+    "output_schema": PROPOSAL_REF_SCHEMA,
 }
 
 
