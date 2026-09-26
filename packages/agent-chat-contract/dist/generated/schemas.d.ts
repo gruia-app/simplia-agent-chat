@@ -11,7 +11,7 @@ export declare const AUDIT_EVENT_SCHEMA: {
     readonly description: "SPEC-CHAT-F1-R687 rev 2 §6 (contrato con PLAT, F2). No incluye input, preview ni contenido.";
     readonly type: "object";
     readonly additionalProperties: false;
-    readonly required: readonly ["schema_version", "event_id", "ts", "org_id", "app_key", "user_id", "tool", "proposal_id", "change_id", "payload_hash", "action", "confirm_effective", "denied_layer", "cost_estimate", "cost_actual", "cost_unit", "result", "error_code"];
+    readonly required: readonly ["schema_version", "event_id", "ts", "org_id", "app_key", "user_id", "tool", "proposal_id", "change_id", "payload_hash", "action", "via", "client_id", "client_verified", "confirm_channel", "confirm_effective", "denied_layer", "cost_estimate", "cost_actual", "cost_unit", "result", "error_code"];
     readonly $defs: {
         readonly nonEmptyString: {
             readonly type: "string";
@@ -61,6 +61,34 @@ export declare const AUDIT_EVENT_SCHEMA: {
         };
         readonly action: {
             readonly enum: readonly ["proposed", "accepted", "applied", "reverted", "compensated", "discarded", "expired", "denied"];
+        };
+        readonly via: {
+            readonly enum: readonly ["ui", "mcp", "cli"];
+            readonly description: "SPEC rev 4 §9.6: canal por el que llegó la acción.";
+        };
+        readonly client_id: {
+            readonly anyOf: readonly [{
+                readonly $ref: "#/$defs/nonEmptyString";
+            }, {
+                readonly type: "null";
+            }];
+            readonly description: "Client_id OAuth del cliente MCP/CLI (null en vía ui).";
+        };
+        readonly client_verified: {
+            readonly anyOf: readonly [{
+                readonly type: "boolean";
+            }, {
+                readonly type: "null";
+            }];
+            readonly description: "Si el client_id está en la allowlist de clientes verificados.";
+        };
+        readonly confirm_channel: {
+            readonly anyOf: readonly [{
+                readonly enum: readonly ["ui", "review_url", "elicitation", "cli_tty"];
+            }, {
+                readonly type: "null";
+            }];
+            readonly description: "Canal por el que el usuario confirmó (null si no hubo confirmación).";
         };
         readonly confirm_effective: {
             readonly enum: readonly ["none", "card", "strong"];
@@ -185,6 +213,52 @@ export declare const CHANGE_RECORD_SCHEMA: {
         };
     };
 };
+/** Fuente: schema/proposal-ref.schema.json */
+export declare const PROPOSAL_REF_SCHEMA: {
+    readonly $schema: "https://json-schema.org/draft/2020-12/schema";
+    readonly $id: "https://gruia.dev/schemas/agent-chat/proposal-ref.schema.json";
+    readonly title: "ProposalRef";
+    readonly description: "SPEC-CHAT-F1-R687 rev 4/5 §9.2: structuredContent que devuelve una herramienta de escritura proyectada a MCP. review_url lleva SOLO el proposal_id, nunca un token.";
+    readonly type: "object";
+    readonly additionalProperties: false;
+    readonly required: readonly ["proposal_id", "tool", "diff", "estimate", "confirm_effective", "effect", "expires_at", "review_url"];
+    readonly properties: {
+        readonly proposal_id: {
+            readonly type: "string";
+            readonly pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+        };
+        readonly tool: {
+            readonly type: "string";
+            readonly minLength: 1;
+        };
+        readonly diff: {
+            readonly description: "Diff estructurado (preview) sin efectos.";
+        };
+        readonly estimate: {
+            readonly anyOf: readonly [{
+                readonly type: "object";
+            }, {
+                readonly type: "number";
+            }, {
+                readonly type: "null";
+            }];
+        };
+        readonly confirm_effective: {
+            readonly enum: readonly ["none", "card", "strong"];
+        };
+        readonly effect: {
+            readonly enum: readonly ["read", "reversible", "irreversible"];
+        };
+        readonly expires_at: {
+            readonly type: "string";
+            readonly format: "date-time";
+        };
+        readonly review_url: {
+            readonly type: "string";
+            readonly minLength: 1;
+        };
+    };
+};
 /** Fuente: schema/proposal.schema.json */
 export declare const PROPOSAL_SCHEMA: {
     readonly $schema: "https://json-schema.org/draft/2020-12/schema";
@@ -304,6 +378,10 @@ export declare const TOOL_SPEC_SCHEMA: {
             readonly type: "object";
             readonly description: "JSON Schema de objeto que describe la entrada de la herramienta.";
         };
+        readonly output_schema: {
+            readonly type: "object";
+            readonly description: "SPEC rev 4 §2: JSON Schema del resultado. Obligatorio si effect=read; en escritura es fijo: el esquema ProposalRef (regla cruzada).";
+        };
         readonly effect: {
             readonly enum: readonly ["read", "reversible", "irreversible"];
         };
@@ -413,7 +491,7 @@ export declare const SCHEMAS: {
         readonly description: "SPEC-CHAT-F1-R687 rev 2 §6 (contrato con PLAT, F2). No incluye input, preview ni contenido.";
         readonly type: "object";
         readonly additionalProperties: false;
-        readonly required: readonly ["schema_version", "event_id", "ts", "org_id", "app_key", "user_id", "tool", "proposal_id", "change_id", "payload_hash", "action", "confirm_effective", "denied_layer", "cost_estimate", "cost_actual", "cost_unit", "result", "error_code"];
+        readonly required: readonly ["schema_version", "event_id", "ts", "org_id", "app_key", "user_id", "tool", "proposal_id", "change_id", "payload_hash", "action", "via", "client_id", "client_verified", "confirm_channel", "confirm_effective", "denied_layer", "cost_estimate", "cost_actual", "cost_unit", "result", "error_code"];
         readonly $defs: {
             readonly nonEmptyString: {
                 readonly type: "string";
@@ -463,6 +541,34 @@ export declare const SCHEMAS: {
             };
             readonly action: {
                 readonly enum: readonly ["proposed", "accepted", "applied", "reverted", "compensated", "discarded", "expired", "denied"];
+            };
+            readonly via: {
+                readonly enum: readonly ["ui", "mcp", "cli"];
+                readonly description: "SPEC rev 4 §9.6: canal por el que llegó la acción.";
+            };
+            readonly client_id: {
+                readonly anyOf: readonly [{
+                    readonly $ref: "#/$defs/nonEmptyString";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly description: "Client_id OAuth del cliente MCP/CLI (null en vía ui).";
+            };
+            readonly client_verified: {
+                readonly anyOf: readonly [{
+                    readonly type: "boolean";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly description: "Si el client_id está en la allowlist de clientes verificados.";
+            };
+            readonly confirm_channel: {
+                readonly anyOf: readonly [{
+                    readonly enum: readonly ["ui", "review_url", "elicitation", "cli_tty"];
+                }, {
+                    readonly type: "null";
+                }];
+                readonly description: "Canal por el que el usuario confirmó (null si no hubo confirmación).";
             };
             readonly confirm_effective: {
                 readonly enum: readonly ["none", "card", "strong"];
@@ -586,6 +692,51 @@ export declare const SCHEMAS: {
             };
         };
     };
+    readonly "proposal-ref": {
+        readonly $schema: "https://json-schema.org/draft/2020-12/schema";
+        readonly $id: "https://gruia.dev/schemas/agent-chat/proposal-ref.schema.json";
+        readonly title: "ProposalRef";
+        readonly description: "SPEC-CHAT-F1-R687 rev 4/5 §9.2: structuredContent que devuelve una herramienta de escritura proyectada a MCP. review_url lleva SOLO el proposal_id, nunca un token.";
+        readonly type: "object";
+        readonly additionalProperties: false;
+        readonly required: readonly ["proposal_id", "tool", "diff", "estimate", "confirm_effective", "effect", "expires_at", "review_url"];
+        readonly properties: {
+            readonly proposal_id: {
+                readonly type: "string";
+                readonly pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+            };
+            readonly tool: {
+                readonly type: "string";
+                readonly minLength: 1;
+            };
+            readonly diff: {
+                readonly description: "Diff estructurado (preview) sin efectos.";
+            };
+            readonly estimate: {
+                readonly anyOf: readonly [{
+                    readonly type: "object";
+                }, {
+                    readonly type: "number";
+                }, {
+                    readonly type: "null";
+                }];
+            };
+            readonly confirm_effective: {
+                readonly enum: readonly ["none", "card", "strong"];
+            };
+            readonly effect: {
+                readonly enum: readonly ["read", "reversible", "irreversible"];
+            };
+            readonly expires_at: {
+                readonly type: "string";
+                readonly format: "date-time";
+            };
+            readonly review_url: {
+                readonly type: "string";
+                readonly minLength: 1;
+            };
+        };
+    };
     readonly proposal: {
         readonly $schema: "https://json-schema.org/draft/2020-12/schema";
         readonly $id: "https://gruia.dev/schemas/agent-chat/proposal.schema.json";
@@ -702,6 +853,10 @@ export declare const SCHEMAS: {
             readonly input_schema: {
                 readonly type: "object";
                 readonly description: "JSON Schema de objeto que describe la entrada de la herramienta.";
+            };
+            readonly output_schema: {
+                readonly type: "object";
+                readonly description: "SPEC rev 4 §2: JSON Schema del resultado. Obligatorio si effect=read; en escritura es fijo: el esquema ProposalRef (regla cruzada).";
             };
             readonly effect: {
                 readonly enum: readonly ["read", "reversible", "irreversible"];

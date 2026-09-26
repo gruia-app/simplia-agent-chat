@@ -16,6 +16,12 @@ export interface ToolSpec {
     input_schema: {
         [k: string]: unknown | undefined;
     };
+    /**
+     * SPEC rev 4 §2: JSON Schema del resultado. Obligatorio si effect=read; en escritura es fijo: el esquema ProposalRef (regla cruzada).
+     */
+    output_schema?: {
+        [k: string]: unknown | undefined;
+    };
     effect: ("read" | "reversible" | "irreversible");
     cost: {
         kind: ("none" | "credits" | "money");

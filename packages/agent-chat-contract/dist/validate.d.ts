@@ -1,5 +1,5 @@
-import type { AuditEvent, ChangeRecord, Proposal, ToolSpec, ViewEvent } from "./generated/types.js";
-export declare const CONTRACT_ENTITIES: readonly ["tool-spec", "proposal", "change-record", "audit-event", "view-event"];
+import type { AuditEvent, ChangeRecord, Proposal, ProposalRef, ToolSpec, ViewEvent } from "./generated/types.js";
+export declare const CONTRACT_ENTITIES: readonly ["tool-spec", "proposal", "change-record", "audit-event", "view-event", "proposal-ref"];
 export type ContractEntity = (typeof CONTRACT_ENTITIES)[number];
 export interface ContractEntityTypes {
     "tool-spec": ToolSpec;
@@ -7,6 +7,7 @@ export interface ContractEntityTypes {
     "change-record": ChangeRecord;
     "audit-event": AuditEvent;
     "view-event": ViewEvent;
+    "proposal-ref": ProposalRef;
 }
 export interface ContractError {
     code: string;
@@ -23,6 +24,8 @@ export declare class ContractValidationError extends Error {
  */
 export declare function validateEntity(entity: ContractEntity, document: unknown): ContractError[];
 interface ToolSpecShape {
+    name?: unknown;
+    app_key?: unknown;
     effect?: unknown;
     confirm?: unknown;
     cost?: {
@@ -32,10 +35,13 @@ interface ToolSpecShape {
     undo?: {
         mode?: unknown;
     };
+    output_schema?: unknown;
 }
 /**
- * Reglas cruzadas de SPEC-CHAT-F1-R687 rev 2 §2. Se ejecutan sobre un
- * documento ya válido estructuralmente (validateEntity("tool-spec", doc)).
+ * Reglas cruzadas de SPEC-CHAT-F1-R687 §2 (rev 2: effect↔confirm↔undo,
+ * cost↔estimator; rev 4: output_schema; rev 5: restricción de nombres
+ * para la proyección MCP de §9). Se ejecutan sobre un documento ya
+ * válido estructuralmente (validateEntity("tool-spec", doc)).
  */
 export declare function validateToolSpecRules(spec: ToolSpecShape): ContractError[];
 /** Esquema + reglas cruzadas de §2 para una ToolSpec. */

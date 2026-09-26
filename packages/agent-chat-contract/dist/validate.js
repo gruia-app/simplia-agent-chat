@@ -7,6 +7,7 @@ export const CONTRACT_ENTITIES = [
     "change-record",
     "audit-event",
     "view-event",
+    "proposal-ref",
 ];
 export class ContractValidationError extends Error {
     errors;
@@ -44,13 +45,59 @@ export function validateEntity(entity, document) {
         return [{ code: "schema:unknown_entity", message: `unknown entity ${entity}`, instancePath: "" }];
     return validate(document) ? [] : (validate.errors ?? []).map(toContractError);
 }
+function deepEqual(a, b) {
+    if (a === b)
+        return true;
+    if (typeof a !== typeof b || a === null || b === null)
+        return false;
+    if (Array.isArray(a) || Array.isArray(b)) {
+        return (Array.isArray(a) &&
+            Array.isArray(b) &&
+            a.length === b.length &&
+            a.every((item, i) => deepEqual(item, b[i])));
+    }
+    if (typeof a === "object") {
+        const ao = a;
+        const bo = b;
+        const keys = Object.keys(ao);
+        return (keys.length === Object.keys(bo).length &&
+            keys.every((k) => k in bo && deepEqual(ao[k], bo[k])));
+    }
+    return false;
+}
 /**
- * Reglas cruzadas de SPEC-CHAT-F1-R687 rev 2 §2. Se ejecutan sobre un
- * documento ya válido estructuralmente (validateEntity("tool-spec", doc)).
+ * Reglas cruzadas de SPEC-CHAT-F1-R687 §2 (rev 2: effect↔confirm↔undo,
+ * cost↔estimator; rev 4: output_schema; rev 5: restricción de nombres
+ * para la proyección MCP de §9). Se ejecutan sobre un documento ya
+ * válido estructuralmente (validateEntity("tool-spec", doc)).
  */
 export function validateToolSpecRules(spec) {
     const errors = [];
     const push = (code, message, instancePath) => errors.push({ code, message, instancePath });
+    // --- rev 5 §2: restricción de nombres para la proyección MCP (§9.1) ---
+    const name = typeof spec.name === "string" ? spec.name : "";
+    const appKey = typeof spec.app_key === "string" ? spec.app_key : "";
+    const [ns = "", verb = ""] = name.split(".");
+    if (appKey.includes("__") || ns.includes("__") || verb.includes("__")) {
+        push("forbidden_double_underscore", '"__" is forbidden inside app_key, ns and verb (MCP projection separator)', "/name");
+    }
+    if (ns === "proposal") {
+        push("reserved_namespace_proposal", 'namespace "proposal" is reserved for system tools (§9.3)', "/name");
+    }
+    const projection = `${appKey}__${ns}__${verb}`;
+    if (appKey && name && projection.length > 64) {
+        push("mcp_projection_too_long", "MCP projection <app_key>__<ns>__<verb> exceeds 64 characters", "/name");
+    }
+    // --- rev 4 §2: output_schema ---
+    const proposalRefSchema = SCHEMAS["proposal-ref"];
+    if (spec.effect === "read" && spec.output_schema === undefined) {
+        push("read_requires_output_schema", 'effect "read" requires output_schema', "/output_schema");
+    }
+    if (spec.effect !== undefined &&
+        spec.effect !== "read" &&
+        (spec.output_schema === undefined || !deepEqual(spec.output_schema, proposalRefSchema))) {
+        push("write_requires_proposal_ref_output", 'write tools must use the ProposalRef schema as output_schema', "/output_schema");
+    }
     if (spec.effect === "read" && spec.confirm !== "none") {
         push("read_requires_confirm_none", 'effect "read" requires confirm "none"', "/confirm");
     }

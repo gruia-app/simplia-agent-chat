@@ -24,6 +24,10 @@ export const AUDIT_EVENT_SCHEMA = {
         "change_id",
         "payload_hash",
         "action",
+        "via",
+        "client_id",
+        "client_verified",
+        "confirm_channel",
         "confirm_effective",
         "denied_layer",
         "cost_estimate",
@@ -93,6 +97,52 @@ export const AUDIT_EVENT_SCHEMA = {
                 "expired",
                 "denied"
             ]
+        },
+        "via": {
+            "enum": [
+                "ui",
+                "mcp",
+                "cli"
+            ],
+            "description": "SPEC rev 4 §9.6: canal por el que llegó la acción."
+        },
+        "client_id": {
+            "anyOf": [
+                {
+                    "$ref": "#/$defs/nonEmptyString"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Client_id OAuth del cliente MCP/CLI (null en vía ui)."
+        },
+        "client_verified": {
+            "anyOf": [
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Si el client_id está en la allowlist de clientes verificados."
+        },
+        "confirm_channel": {
+            "anyOf": [
+                {
+                    "enum": [
+                        "ui",
+                        "review_url",
+                        "elicitation",
+                        "cli_tty"
+                    ]
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Canal por el que el usuario confirmó (null si no hubo confirmación)."
         },
         "confirm_effective": {
             "enum": [
@@ -276,6 +326,73 @@ export const CHANGE_RECORD_SCHEMA = {
         }
     }
 };
+/** Fuente: schema/proposal-ref.schema.json */
+export const PROPOSAL_REF_SCHEMA = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://gruia.dev/schemas/agent-chat/proposal-ref.schema.json",
+    "title": "ProposalRef",
+    "description": "SPEC-CHAT-F1-R687 rev 4/5 §9.2: structuredContent que devuelve una herramienta de escritura proyectada a MCP. review_url lleva SOLO el proposal_id, nunca un token.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "proposal_id",
+        "tool",
+        "diff",
+        "estimate",
+        "confirm_effective",
+        "effect",
+        "expires_at",
+        "review_url"
+    ],
+    "properties": {
+        "proposal_id": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "tool": {
+            "type": "string",
+            "minLength": 1
+        },
+        "diff": {
+            "description": "Diff estructurado (preview) sin efectos."
+        },
+        "estimate": {
+            "anyOf": [
+                {
+                    "type": "object"
+                },
+                {
+                    "type": "number"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "confirm_effective": {
+            "enum": [
+                "none",
+                "card",
+                "strong"
+            ]
+        },
+        "effect": {
+            "enum": [
+                "read",
+                "reversible",
+                "irreversible"
+            ]
+        },
+        "expires_at": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "review_url": {
+            "type": "string",
+            "minLength": 1
+        }
+    }
+};
 /** Fuente: schema/proposal.schema.json */
 export const PROPOSAL_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -446,6 +563,10 @@ export const TOOL_SPEC_SCHEMA = {
             "type": "object",
             "description": "JSON Schema de objeto que describe la entrada de la herramienta."
         },
+        "output_schema": {
+            "type": "object",
+            "description": "SPEC rev 4 §2: JSON Schema del resultado. Obligatorio si effect=read; en escritura es fijo: el esquema ProposalRef (regla cruzada)."
+        },
         "effect": {
             "enum": [
                 "read",
@@ -589,6 +710,7 @@ export const VIEW_EVENT_SCHEMA = {
 export const SCHEMAS = {
     "audit-event": AUDIT_EVENT_SCHEMA,
     "change-record": CHANGE_RECORD_SCHEMA,
+    "proposal-ref": PROPOSAL_REF_SCHEMA,
     "proposal": PROPOSAL_SCHEMA,
     "tool-spec": TOOL_SPEC_SCHEMA,
     "view-event": VIEW_EVENT_SCHEMA,

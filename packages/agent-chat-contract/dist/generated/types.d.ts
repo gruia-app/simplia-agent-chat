@@ -5,6 +5,7 @@
  */
 export type { AuditEvent } from "./types/audit-event.js";
 export type { ChangeRecord } from "./types/change-record.js";
+export type { ProposalRef } from "./types/proposal-ref.js";
 export type { Proposal } from "./types/proposal.js";
 export type { ToolSpec } from "./types/tool-spec.js";
 export type { ViewEvent } from "./types/view-event.js";

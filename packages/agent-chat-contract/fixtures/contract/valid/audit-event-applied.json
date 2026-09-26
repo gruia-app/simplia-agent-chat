@@ -18,6 +18,10 @@
     "cost_actual": 0.0,
     "cost_unit": "credits",
     "result": "ok",
-    "error_code": null
+    "error_code": null,
+    "via": "ui",
+    "client_id": null,
+    "client_verified": null,
+    "confirm_channel": "ui"
   }
 }

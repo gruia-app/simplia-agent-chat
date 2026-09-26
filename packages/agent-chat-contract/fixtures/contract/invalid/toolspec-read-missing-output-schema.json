@@ -1,0 +1,28 @@
+{
+  "entity": "tool-spec",
+  "document": {
+    "name": "memoria.recordar",
+    "description": "Guarda un hecho en memoria",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "fact": {
+          "type": "string"
+        }
+      }
+    },
+    "effect": "read",
+    "cost": {
+      "kind": "none",
+      "estimator": false
+    },
+    "confirm": "none",
+    "undo": {
+      "mode": "none",
+      "window_s": 0,
+      "grace_s": 0
+    },
+    "app_key": "insaidr"
+  },
+  "expected_error": "read_requires_output_schema"
+}

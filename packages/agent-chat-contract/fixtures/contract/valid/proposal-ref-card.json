@@ -1,0 +1,23 @@
+{
+  "entity": "proposal-ref",
+  "document": {
+    "proposal_id": "3f2c1a9e-7b4d-4e5f-9a8b-1c2d3e4f5a6b",
+    "tool": "memoria.recordar",
+    "diff": {
+      "ops": [
+        {
+          "op": "add",
+          "path": "/fact",
+          "value": "x"
+        }
+      ]
+    },
+    "estimate": {
+      "credits": 5
+    },
+    "confirm_effective": "card",
+    "effect": "reversible",
+    "expires_at": "2026-09-24T12:05:00Z",
+    "review_url": "https://app.example/agent/proposals/3f2c1a9e-7b4d-4e5f-9a8b-1c2d3e4f5a6b"
+  }
+}

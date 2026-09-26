@@ -25,6 +25,22 @@ proposal_id: NonEmptyString
 change_id: (NonEmptyString | null)
 payload_hash: string
 action: ("proposed" | "accepted" | "applied" | "reverted" | "compensated" | "discarded" | "expired" | "denied")
+/**
+ * SPEC rev 4 §9.6: canal por el que llegó la acción.
+ */
+via: ("ui" | "mcp" | "cli")
+/**
+ * Client_id OAuth del cliente MCP/CLI (null en vía ui).
+ */
+client_id: (NonEmptyString | null)
+/**
+ * Si el client_id está en la allowlist de clientes verificados.
+ */
+client_verified: (boolean | null)
+/**
+ * Canal por el que el usuario confirmó (null si no hubo confirmación).
+ */
+confirm_channel: (("ui" | "review_url" | "elicitation" | "cli_tty") | null)
 confirm_effective: ("none" | "card" | "strong")
 denied_layer: (("entitlement" | "role" | "policy" | "token") | null)
 cost_estimate: number

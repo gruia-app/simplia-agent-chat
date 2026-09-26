@@ -29,6 +29,10 @@
       "type": "object",
       "description": "JSON Schema de objeto que describe la entrada de la herramienta."
     },
+    "output_schema": {
+      "type": "object",
+      "description": "SPEC rev 4 §2: JSON Schema del resultado. Obligatorio si effect=read; en escritura es fijo: el esquema ProposalRef (regla cruzada)."
+    },
     "effect": {
       "enum": ["read", "reversible", "irreversible"]
     },

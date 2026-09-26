@@ -17,6 +17,10 @@
     "change_id",
     "payload_hash",
     "action",
+    "via",
+    "client_id",
+    "client_verified",
+    "confirm_channel",
     "confirm_effective",
     "denied_layer",
     "cost_estimate",
@@ -68,6 +72,25 @@
         "expired",
         "denied"
       ]
+    },
+    "via": {
+      "enum": ["ui", "mcp", "cli"],
+      "description": "SPEC rev 4 §9.6: canal por el que llegó la acción."
+    },
+    "client_id": {
+      "anyOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "type": "null" }],
+      "description": "Client_id OAuth del cliente MCP/CLI (null en vía ui)."
+    },
+    "client_verified": {
+      "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+      "description": "Si el client_id está en la allowlist de clientes verificados."
+    },
+    "confirm_channel": {
+      "anyOf": [
+        { "enum": ["ui", "review_url", "elicitation", "cli_tty"] },
+        { "type": "null" }
+      ],
+      "description": "Canal por el que el usuario confirmó (null si no hubo confirmación)."
     },
     "confirm_effective": {
       "enum": ["none", "card", "strong"]

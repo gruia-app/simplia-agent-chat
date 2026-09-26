@@ -2,17 +2,14 @@
   "entity": "tool-spec",
   "document": {
     "name": "memoria.recordar",
-    "description": "Recuerda un dato del usuario en el panel Memoria.",
+    "description": "Guarda un hecho en memoria",
     "input_schema": {
       "type": "object",
       "properties": {
-        "dato": {
+        "fact": {
           "type": "string"
         }
-      },
-      "required": [
-        "dato"
-      ]
+      }
     },
     "effect": "reversible",
     "cost": {
@@ -22,10 +19,10 @@
     "confirm": "card",
     "undo": {
       "mode": "revert",
-      "window_s": 3600,
+      "window_s": 300,
       "grace_s": 0
     },
-    "app_key": "insaidr",
+    "app_key": "in__saidr",
     "output_schema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "https://gruia.dev/schemas/agent-chat/proposal-ref.schema.json",
@@ -92,5 +89,6 @@
         }
       }
     }
-  }
+  },
+  "expected_error": "forbidden_double_underscore"
 }
