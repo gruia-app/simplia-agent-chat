@@ -32,7 +32,13 @@ from .entitlement import (
     StubEntitlement,
 )
 from .errors import ContractError
-from .gateway import DelegatedAssertion, DelegatedGateway, issue_test_assertion
+from .gateway import (
+    DelegatedAssertion,
+    DelegatedGateway,
+    cli_apply_allowed,
+    issue_test_assertion,
+    jwks_resolver_from_document,
+)
 from .mcp import (
     MCP_NAME_MAX_LENGTH,
     MCP_NAME_PATTERN,
@@ -57,6 +63,7 @@ __all__ = [
     "ContractValidationError",
     "CostThreshold",
     "DelegatedAssertion",
+    "cli_apply_allowed",
     "DelegatedGateway",
     "EntitlementDecision",
     "HttpAuditSink",
@@ -80,6 +87,7 @@ __all__ = [
     "from_mcp_name",
     "hash_token",
     "issue_test_assertion",
+    "jwks_resolver_from_document",
     "load_schemas",
     "validate_document",
     "validate_entity",

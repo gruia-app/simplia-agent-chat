@@ -11,21 +11,37 @@
 
 from __future__ import annotations
 
+import base64
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
 from gruia_agent_tools import (
     ContractError,
     DelegatedGateway,
+    cli_apply_allowed,
     issue_test_assertion,
+    jwks_resolver_from_document,
 )
 from gruia_agent_tools.contract import validate_document
 
 from .conftest import APP, ORG, OTHER_ORG, USER, make_entitlement
+
+
+def _rsa_jwk(public_key: RSAPublicKey, kid: str) -> dict:
+    """JWK público del documento JWKS de fixture usado en estos tests."""
+    numbers = public_key.public_numbers()
+
+    def b64u(n: int) -> str:
+        raw = n.to_bytes((n.bit_length() + 7) // 8, "big")
+        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+    return {"kty": "RSA", "kid": kid, "use": "sig", "alg": "RS256", "n": b64u(numbers.n), "e": b64u(numbers.e)}
 
 SVC = "svc-channel-token"
 CLIENT = "cli-mcp-1"
@@ -44,13 +60,20 @@ def keypair():
     return private, public_pem
 
 
-@pytest.fixture
-def gateway(service, keypair):
+@pytest.fixture(scope="module")
+def jwks(keypair):
+    """§9.4: JWKS de fixture — el gateway resuelve la clave por kid."""
     _, public_pem = keypair
+    pub = load_pem_public_key(public_pem)
+    return {"keys": [_rsa_jwk(pub, "test-key")]}
+
+
+@pytest.fixture
+def gateway(service, jwks):
     return DelegatedGateway(
         service,
         app_key=APP,
-        jwks_resolver=lambda kid: public_pem,
+        jwks_resolver=jwks_resolver_from_document(jwks),
         service_token_verifier=lambda t: t == SVC,
         verified_clients={CLIENT},
         review_url_template="https://app.example/agent/proposals/{proposal_id}",
@@ -368,3 +391,109 @@ def test_unknown_mcp_name_is_400(mcp_service, gateway, keypair):
     )
     assert err.status == 400
     assert err.code == "unknown_tool"
+
+
+# ------------------------------------------------------------- §9.4 JWKS
+
+
+def test_unknown_kid_is_401(mcp_service, gateway, keypair):
+    """La aserción se firma con una clave cuyo kid no está en el JWKS."""
+    err = _err(
+        gateway.call_tool, MCP_WRITE, {"fact": "x"},
+        assertion=_assertion(keypair, kid="kid-que-no-existe"), service_token=SVC,
+    )
+    assert err.status == 401
+
+
+def test_jwks_resolver_from_document(mcp_service, jwks, keypair):
+    resolve = jwks_resolver_from_document(jwks)
+    assert resolve("test-key")["kid"] == "test-key"
+    with pytest.raises(KeyError):
+        resolve("otro")
+
+
+# ------------------------------------------------------------- §9.5 CLI
+
+
+def test_cli_apply_allowed():
+    assert cli_apply_allowed("reversible", "card", True) is True
+    assert cli_apply_allowed("reversible", "card", False) is False
+    assert cli_apply_allowed("reversible", "strong", True) is False
+    assert cli_apply_allowed("irreversible", "strong", True) is False
+    assert cli_apply_allowed("read", "none", True) is False
+
+
+def _propose_cli(mcp_service, gateway, keypair, **kw):
+    """Crea una proposal por el canal cli (via=cli)."""
+    result = gateway.call_tool(
+        MCP_WRITE, {"fact": "x"},
+        assertion=_assertion(keypair), service_token=SVC, via="cli",
+    )
+    return result["structuredContent"]["proposal_id"]
+
+
+def test_cli_apply_with_tty_executes(mcp_service, gateway, keypair, reversible_tool, sink):
+    pid = _propose_cli(mcp_service, gateway, keypair)
+    result = gateway.call_tool(
+        SYS_APPLY, {"proposal_id": pid},
+        assertion=_assertion(keypair), service_token=SVC,
+        via="cli", cli_tty_confirmed=True,
+    )
+    assert "change_id" in result
+    assert len(reversible_tool.applied) == 1
+    applied = next(e for e in sink.events if e["action"] == "applied")
+    assert applied["via"] == "cli"
+    assert applied["confirm_channel"] == "cli_tty"
+
+
+def test_cli_apply_without_tty_returns_review_url(mcp_service, gateway, keypair, reversible_tool):
+    pid = _propose_cli(mcp_service, gateway, keypair)
+    result = gateway.call_tool(
+        SYS_APPLY, {"proposal_id": pid},
+        assertion=_assertion(keypair), service_token=SVC, via="cli",
+    )
+    assert "review_url" in result
+    assert reversible_tool.applied == []
+
+
+def test_cli_apply_irreversible_returns_review_url(mcp_service, gateway, keypair, irreversible_tool):
+    res = gateway.call_tool(
+        f"{APP}__crm__borrar_cuenta", {"account": "acc-1"},
+        assertion=_assertion(keypair), service_token=SVC, via="cli",
+    )
+    out = gateway.call_tool(
+        SYS_APPLY, {"proposal_id": res["structuredContent"]["proposal_id"]},
+        assertion=_assertion(keypair), service_token=SVC,
+        via="cli", cli_tty_confirmed=True,
+    )
+    assert "review_url" in out
+    assert irreversible_tool.applied == []
+
+
+def test_cli_revert_with_tty_executes(mcp_service, gateway, keypair, reversible_tool):
+    pid = _propose_cli(mcp_service, gateway, keypair)
+    applied = gateway.call_tool(
+        SYS_APPLY, {"proposal_id": pid},
+        assertion=_assertion(keypair), service_token=SVC,
+        via="cli", cli_tty_confirmed=True,
+    )
+    result = gateway.call_tool(
+        SYS_REVERT, {"change_id": applied["change_id"]},
+        assertion=_assertion(keypair), service_token=SVC,
+        via="cli", cli_tty_confirmed=True,
+    )
+    assert result["change"]["state"] == "reverted"
+
+
+def test_cli_revert_without_tty_returns_review_url(mcp_service, gateway, keypair, reversible_tool):
+    pid = _propose_cli(mcp_service, gateway, keypair)
+    applied = gateway.call_tool(
+        SYS_APPLY, {"proposal_id": pid},
+        assertion=_assertion(keypair), service_token=SVC,
+        via="cli", cli_tty_confirmed=True,
+    )
+    result = gateway.call_tool(
+        SYS_REVERT, {"change_id": applied["change_id"]},
+        assertion=_assertion(keypair), service_token=SVC, via="cli",
+    )
+    assert "review_url" in result

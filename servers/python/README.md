@@ -34,13 +34,18 @@ esquemas y fixtures — no hay segunda fuente de verdad.
   la tabla `gateway_jtis` para el jti de un solo uso de §9.4.
 - `mcp` — `to_mcp_tool`/`to_mcp_name`/`from_mcp_name`: proyección MCP
   2025-06-18 de §9.1 con paridad 1:1 al paquete TS.
-- `gateway.DelegatedGateway` — modo delegado §9.3/§9.4: verifica la
-  aserción firmada por el kernel (JWT RS256, `aud=app_key`, `exp-iat<=60s`,
-  `jti` de un solo uso → 401 en replay), exige token de servicio + aserción
-  (sin aserción → 401), scopes `app:`/`tool:`/`tool:*` + entitlement
-  `mcp_access`, herramientas de sistema `proposal__apply|revert|get` con
-  elicitation solo si `reversible` + `card` + org activada + cliente
-  verificado (si no, `review_url` sin token) y anti-IDOR → 404.
+- `gateway.DelegatedGateway` — modo delegado §9.3/§9.4/§9.5: verifica la
+  aserción firmada por el kernel contra el JWKS del kernel
+  (`jwks_resolver_from_document` resuelve el `kid`; JWT RS256,
+  `aud=app_key`, `exp-iat<=60s`, `jti` de un solo uso → 401 en replay),
+  exige token de servicio + aserción (sin aserción → 401), scopes
+  `app:`/`tool:`/`tool:*` + entitlement `mcp_access`, herramientas de
+  sistema `proposal__apply|revert|get` con elicitation solo si
+  `reversible` + `card` + org activada + cliente verificado (si no,
+  `review_url` sin token) y anti-IDOR → 404. Con `via="cli"` aplica la
+  regla §9.5 (`cli_apply_allowed`): solo reversible+card con
+  confirmación TTY (`cli_tty_confirmed`); el resto → `review_url` y no
+  existe ningún flag `--yes`.
 
 ## Garantías (§4/§6/§7)
 

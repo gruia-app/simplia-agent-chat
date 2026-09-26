@@ -14,6 +14,9 @@
   (sin token) sin ejecutar.
 - `get`, `apply` y `revert` exigen mismo user_id, org_id y app_key; si no,
   404 (anti-IDOR).
+- CLI (§9.5): con `via="cli"` apply/revert exigen confirmación TTY
+  (`cli_tty_confirmed`) y solo lo reversible con card; todo lo demás
+  devuelve `review_url`. No existe flag `--yes` ni equivalente.
 """
 
 from __future__ import annotations
@@ -25,7 +28,7 @@ from typing import Any, Callable
 
 import jwt
 
-from .errors import forbidden, not_found, unauthorized
+from .errors import bad_request, forbidden, not_found, unauthorized
 from .mcp import from_mcp_name
 from .service import AgentToolsService, RouteInfo
 from . import tokens
@@ -48,6 +51,27 @@ class DelegatedAssertion:
     jti: str
 
 
+def cli_apply_allowed(effect: str, confirm_effective: str, is_tty: bool) -> bool:
+    """§9.5: por la CLI solo se aplica lo reversible con `card` y solo si
+    stdin y stdout son TTY. No existe flag `--yes` ni equivalente: la
+    firma de esta función no admite bypass."""
+    return effect == "reversible" and confirm_effective == "card" and is_tty
+
+
+def jwks_resolver_from_document(jwks: dict[str, Any]) -> Callable[[str | None], Any]:
+    """Resolver §9.4 a partir de un documento JWKS `{keys: [...]}`: busca
+    la clave pública por `kid`. Levanta KeyError si el kid no está."""
+    keys = [k for k in (jwks or {}).get("keys") or [] if isinstance(k, dict)]
+
+    def resolve(kid: str | None) -> Any:
+        for jwk in keys:
+            if jwk.get("kid") == kid or (kid is None and len(keys) == 1):
+                return jwk
+        raise KeyError(f"kid {kid!r} not in JWKS")
+
+    return resolve
+
+
 class DelegatedGateway:
     """Punto de entrada del lado de la app para llamadas delegadas MCP."""
 
@@ -62,8 +86,9 @@ class DelegatedGateway:
         review_url_template: str = "/agent/proposals/{proposal_id}",
         elicit: Callable[[dict[str, Any]], str] | None = None,
     ):
-        """jwks_resolver(kid) -> clave PEM/objeto con el que verificar la
-        aserción. elicit(proposal) -> 'accept'|'decline'|'cancel' implementa
+        """jwks_resolver(kid) -> clave PEM/objeto/JWK-dict con el que
+        verificar la aserción (ver `jwks_resolver_from_document`).
+        elicit(proposal) -> 'accept'|'decline'|'cancel' implementa
         `elicitation/create` del cliente MCP; None equivale a no disponible
         (→ review_url). verified_clients: allowlist de client_id."""
         self.service = service
@@ -89,6 +114,8 @@ class DelegatedGateway:
         try:
             header = jwt.get_unverified_header(assertion)
             key = self._jwks_resolver(header.get("kid"))
+            if isinstance(key, dict) and key.get("kty"):
+                key = jwt.PyJWK(key).key
             claims = jwt.decode(
                 assertion,
                 key=key,
@@ -134,10 +161,15 @@ class DelegatedGateway:
         assertion: str | None,
         service_token: str | None,
         thread_id: str | None = None,
+        via: str = "mcp",
+        cli_tty_confirmed: bool = False,
         now: datetime | None = None,
     ) -> dict[str, Any]:
         """tools/call delegado: escrituras crean Proposal (→ ProposalRef),
-        lecturas ejecutan la implementación read/preview."""
+        lecturas ejecutan la implementación read/preview. `via` es el
+        canal (§9.6): "mcp" o "cli"; en "cli" apply/revert siguen §9.5."""
+        if via not in ("mcp", "cli"):
+            raise bad_request(f"unknown via {via!r}", "invalid_via")
         subject = self.verify_assertion(assertion=assertion, service_token=service_token, now=now)
         try:
             parts = from_mcp_name(mcp_name)
@@ -149,12 +181,15 @@ class DelegatedGateway:
         self._check_mcp_access(subject)
 
         route = RouteInfo(
-            via="mcp",
+            via=via,
             client_id=subject.client_id,
             client_verified=subject.client_verified,
         )
         if parts["ns"] == "proposal":
-            return self._system_tool(parts["verb"], subject, route, arguments or {}, now=now)
+            return self._system_tool(
+                parts["verb"], subject, route, arguments or {},
+                cli_tty_confirmed=cli_tty_confirmed, now=now,
+            )
 
         tool_name = f"{parts['ns']}.{parts['verb']}"
         spec, impl = self.service.registry.get(tool_name)
@@ -174,7 +209,7 @@ class DelegatedGateway:
             input=arguments or {},
             org_id=subject.org_id,
             user_id=subject.user_id,
-            thread_id=thread_id or f"mcp:{subject.mcp_token_id}",
+            thread_id=thread_id or f"{via}:{subject.mcp_token_id}",
             route=route,
             now=now,
         )
@@ -201,6 +236,7 @@ class DelegatedGateway:
         route: RouteInfo,
         arguments: dict[str, Any],
         *,
+        cli_tty_confirmed: bool = False,
         now: datetime | None,
     ) -> dict[str, Any]:
         if verb == "get":
@@ -208,11 +244,15 @@ class DelegatedGateway:
             return {"proposal": proposal}
         if verb == "apply":
             proposal = self._proposal_for_subject(arguments.get("proposal_id"), subject)
+            if route.via == "cli":
+                return self._apply_via_cli(proposal, subject, route, cli_tty_confirmed, now=now)
             if not self._elicitation_allowed(proposal, subject):
                 return {"review_url": self._review_url(proposal["id"])}
             return self._apply_via_elicitation(proposal, subject, route, now=now)
         if verb == "revert":
             change = self._change_for_subject(arguments.get("change_id"), subject)
+            if route.via == "cli":
+                return self._revert_via_cli(change, subject, route, cli_tty_confirmed, now=now)
             if not self._elicitation_allowed_for_change(change, subject):
                 return {"review_url": self._review_url(change["proposal_id"])}
             return self._revert_via_elicitation(change, subject, route, now=now)
@@ -282,7 +322,7 @@ class DelegatedGateway:
         if self._elicit(proposal) != "accept":
             return {"review_url": self._review_url(proposal["id"])}
         route = RouteInfo(
-            via="mcp",
+            via=route.via,
             client_id=subject.client_id,
             client_verified=subject.client_verified,
             confirm_channel="elicitation",
@@ -309,7 +349,7 @@ class DelegatedGateway:
         if self._elicit({"change_id": change["change_id"], "tool": change["tool"]}) != "accept":
             return {"review_url": self._review_url(change["proposal_id"])}
         route = RouteInfo(
-            via="mcp",
+            via=route.via,
             client_id=subject.client_id,
             client_verified=subject.client_verified,
             confirm_channel="elicitation",
@@ -326,6 +366,66 @@ class DelegatedGateway:
             actor_user_id=subject.user_id,
             context="user_confirmed",
             route=route,
+            now=now,
+        )
+
+    def _apply_via_cli(
+        self, proposal: dict, subject: DelegatedAssertion, route: RouteInfo,
+        tty_confirmed: bool, *, now,
+    ) -> dict[str, Any]:
+        """§9.5: la CLI solo aplica lo reversible con card y solo con TTY;
+        en cualquier otro caso devuelve review_url sin ejecutar."""
+        spec, _ = self.service.registry.get(proposal["tool"])
+        if not cli_apply_allowed(spec["effect"], proposal["confirm_effective"], tty_confirmed):
+            return {"review_url": self._review_url(proposal["id"])}
+        confirmed = RouteInfo(
+            via="cli",
+            client_id=subject.client_id,
+            client_verified=subject.client_verified,
+            confirm_channel="cli_tty",
+        )
+        accepted = self.service.accept_proposal(
+            proposal["id"],
+            actor_user_id=subject.user_id,
+            context="user_confirmed",
+            route=confirmed,
+            now=now,
+        )
+        return self.service.apply_proposal(
+            proposal["id"],
+            token=accepted["apply_token"],
+            actor_user_id=subject.user_id,
+            context="user_confirmed",
+            route=confirmed,
+            now=now,
+        )
+
+    def _revert_via_cli(
+        self, change: dict, subject: DelegatedAssertion, route: RouteInfo,
+        tty_confirmed: bool, *, now,
+    ) -> dict[str, Any]:
+        """§9.5: revert por la CLI solo con TTY y modo revert; si no,
+        review_url."""
+        if not tty_confirmed or change["undo_mode"] != "revert" or change["state"] != "applied":
+            return {"review_url": self._review_url(change["proposal_id"])}
+        confirmed = RouteInfo(
+            via="cli",
+            client_id=subject.client_id,
+            client_verified=subject.client_verified,
+            confirm_channel="cli_tty",
+        )
+        issued = self.service.create_revert_token(
+            change["change_id"],
+            actor_user_id=subject.user_id,
+            org_id=subject.org_id,
+            now=now,
+        )
+        return self.service.revert_change(
+            change["change_id"],
+            token=issued["revert_token"],
+            actor_user_id=subject.user_id,
+            context="user_confirmed",
+            route=confirmed,
             now=now,
         )
 
