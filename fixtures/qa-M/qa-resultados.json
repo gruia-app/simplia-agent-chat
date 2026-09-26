@@ -1,0 +1,112 @@
+[
+ {
+  "n": "desktop: sin desbordamiento horizontal",
+  "ok": true,
+  "d": "exceso 0px"
+ },
+ {
+  "n": "desktop: aceptar aplica la versión modificada a la vista",
+  "ok": true,
+  "d": "1Día 0¿Cómo vais a absorber el pico de noviembre sin contratar?Borrador"
+ },
+ {
+  "n": "desktop: deshacer restaura el valor",
+  "ok": true,
+  "d": "1Día 0Una pregunta sobre vuestros envíos de noviembreBorrador"
+ },
+ {
+  "n": "desktop: confirmar bloqueado hasta marcar la casilla",
+  "ok": true,
+  "d": ""
+ },
+ {
+  "n": "desktop: el foco entra en el diálogo",
+  "ok": true,
+  "d": "cf-check"
+ },
+ {
+  "n": "desktop: el foco no sale del diálogo con Tab",
+  "ok": true,
+  "d": ""
+ },
+ {
+  "n": "desktop: la memoria incorpora lo aprendido",
+  "ok": true,
+  "d": ""
+ },
+ {
+  "n": "desktop: la clave no queda visible tras conectar",
+  "ok": true,
+  "d": ""
+ },
+ {
+  "n": "desktop: todos los botones visibles tienen nombre",
+  "ok": true,
+  "d": "0"
+ },
+ {
+  "n": "desktop: objetivos táctiles >= 32px",
+  "ok": true,
+  "d": ""
+ },
+ {
+  "n": "desktop: sin errores JS",
+  "ok": true,
+  "d": ""
+ },
+ {
+  "n": "mobile390: sin desbordamiento horizontal",
+  "ok": true,
+  "d": "exceso 0px"
+ },
+ {
+  "n": "mobile390: aceptar aplica la versión modificada a la vista",
+  "ok": true,
+  "d": "1Día 0¿Cómo vais a absorber el pico de noviembre sin contratar?Borrador"
+ },
+ {
+  "n": "mobile390: deshacer restaura el valor",
+  "ok": true,
+  "d": "1Día 0Una pregunta sobre vuestros envíos de noviembreBorrador"
+ },
+ {
+  "n": "mobile390: confirmar bloqueado hasta marcar la casilla",
+  "ok": true,
+  "d": ""
+ },
+ {
+  "n": "mobile390: el foco entra en el diálogo",
+  "ok": true,
+  "d": "cf-check"
+ },
+ {
+  "n": "mobile390: el foco no sale del diálogo con Tab",
+  "ok": true,
+  "d": ""
+ },
+ {
+  "n": "mobile390: la memoria incorpora lo aprendido",
+  "ok": true,
+  "d": ""
+ },
+ {
+  "n": "mobile390: la clave no queda visible tras conectar",
+  "ok": true,
+  "d": ""
+ },
+ {
+  "n": "mobile390: todos los botones visibles tienen nombre",
+  "ok": true,
+  "d": "0"
+ },
+ {
+  "n": "mobile390: objetivos táctiles >= 32px",
+  "ok": true,
+  "d": ""
+ },
+ {
+  "n": "mobile390: sin errores JS",
+  "ok": true,
+  "d": ""
+ }
+]
