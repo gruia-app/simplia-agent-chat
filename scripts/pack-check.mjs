@@ -62,6 +62,13 @@ const required = [
   "packages/agent-chat-react/dist/use-surface-action.js",
   "packages/agent-chat-react/dist/use-surface-action.d.ts",
   "packages/agent-chat-react/dist/styles.css",
+  "packages/agent-chat-contract/dist/index.js",
+  "packages/agent-chat-contract/dist/index.d.ts",
+  "packages/agent-chat-contract/dist/generated/schemas.js",
+  "packages/agent-chat-contract/dist/generated/types.d.ts",
+  "packages/agent-chat-contract/schema/tool-spec.schema.json",
+  "packages/agent-chat-contract/schema/audit-event.schema.json",
+  "packages/agent-chat-contract/fixtures/contract/valid/proposal-proposed.json",
 ];
 for (const requiredFile of required) {
   if (!files.has(requiredFile)) throw new Error(`git bundle: missing ${requiredFile}`);

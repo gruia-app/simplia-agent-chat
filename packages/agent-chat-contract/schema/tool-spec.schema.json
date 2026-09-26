@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gruia.dev/schemas/agent-chat/tool-spec.schema.json",
+  "title": "ToolSpec",
+  "description": "SPEC-CHAT-F1-R687 rev 2 §2 (normativo). Las reglas cruzadas effect↔confirm↔undo y cost↔estimator se validan en código (validateToolSpecRules), no en este esquema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "description",
+    "input_schema",
+    "effect",
+    "cost",
+    "confirm",
+    "undo",
+    "app_key"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "input_schema": {
+      "type": "object",
+      "description": "JSON Schema de objeto que describe la entrada de la herramienta."
+    },
+    "effect": {
+      "enum": ["read", "reversible", "irreversible"]
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "estimator"],
+      "properties": {
+        "kind": { "enum": ["none", "credits", "money"] },
+        "estimator": { "type": "boolean" }
+      }
+    },
+    "confirm": {
+      "enum": ["none", "card", "strong"]
+    },
+    "undo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "window_s", "grace_s"],
+      "properties": {
+        "mode": { "enum": ["revert", "compensate", "none"] },
+        "window_s": { "type": "integer", "minimum": 0 },
+        "grace_s": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "app_key": {
+      "type": "string",
+      "description": "Clave canónica del registry del kernel.",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 64
+    }
+  }
+}

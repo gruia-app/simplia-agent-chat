@@ -1,0 +1,49 @@
+{
+  "name": "@simplia/agent-chat-contract",
+  "version": "2.0.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "JSON Schema (draft 2020-12) source of truth for the chat-centric ToolSpec/Proposal contract, generated TypeScript types, cross-rule validator and fixtures (SPEC-CHAT-F1-R687 rev 2).",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "schema",
+    "fixtures",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "generate:check": "node scripts/generate.mjs --check",
+    "build": "node scripts/generate.mjs && node ./node_modules/typescript/bin/tsc -p tsconfig.json",
+    "typecheck": "node ./node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+    "test": "pnpm run build && node --test"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./generated/schemas": {
+      "types": "./dist/generated/schemas.d.ts",
+      "import": "./dist/generated/schemas.js",
+      "default": "./dist/generated/schemas.js"
+    },
+    "./generated/types": {
+      "types": "./dist/generated/types.d.ts",
+      "import": "./dist/generated/types.js",
+      "default": "./dist/generated/types.js"
+    }
+  },
+  "dependencies": {
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1"
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "15.0.4",
+    "typescript": "^5.6.3"
+  }
+}

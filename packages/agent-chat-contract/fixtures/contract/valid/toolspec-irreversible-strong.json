@@ -1,0 +1,30 @@
+{
+  "entity": "tool-spec",
+  "document": {
+    "name": "correo.enviar",
+    "description": "Recuerda un dato del usuario en el panel Memoria.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "dato": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "dato"
+      ]
+    },
+    "effect": "irreversible",
+    "cost": {
+      "kind": "credits",
+      "estimator": true
+    },
+    "confirm": "strong",
+    "undo": {
+      "mode": "compensate",
+      "window_s": 0,
+      "grace_s": 60
+    },
+    "app_key": "insaidr"
+  }
+}

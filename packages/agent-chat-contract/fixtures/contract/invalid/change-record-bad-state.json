@@ -1,0 +1,19 @@
+{
+  "entity": "change-record",
+  "document": {
+    "change_id": "chg-0001",
+    "proposal_id": "3f2c1a9e-7b4d-4e5f-9a8b-1c2d3e4f5a6b",
+    "tool": "memoria.recordar",
+    "app_key": "insaidr",
+    "org_id": "org-qa-1",
+    "user_id": "user-qa-1",
+    "payload_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "applied_at": "2026-09-24T12:00:01Z",
+    "state": "proposed",
+    "undo_mode": "revert",
+    "undo_window_s": 3600,
+    "undone_at": null,
+    "cost_actual": 0.0
+  },
+  "expected_error": "schema:enum"
+}

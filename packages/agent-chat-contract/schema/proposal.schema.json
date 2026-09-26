@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gruia.dev/schemas/agent-chat/proposal.schema.json",
+  "title": "Proposal",
+  "description": "SPEC-CHAT-F1-R687 rev 2 §3 (normativo). Las transiciones de estado válidas se aplican en el servidor (§3); este esquema solo fija la forma del documento.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "tool",
+    "input",
+    "payload_hash",
+    "preview",
+    "estimate",
+    "confirm_effective",
+    "state",
+    "created_at",
+    "expires_at",
+    "supersedes",
+    "plan_id",
+    "step",
+    "change_id",
+    "org_id",
+    "user_id",
+    "thread_id"
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "properties": {
+    "id": { "$ref": "#/$defs/uuid" },
+    "tool": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"
+    },
+    "input": {
+      "description": "Entrada de la herramienta tal como se propuso (forma libre, validada contra el input_schema de la ToolSpec en el servidor)."
+    },
+    "payload_hash": {
+      "type": "string",
+      "description": "sha256 del JSON canónico RFC 8785 de {tool, input}.",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "preview": {
+      "description": "Diff estructurado de campos, texto o filas devuelto por preview(input); forma libre."
+    },
+    "estimate": {
+      "description": "Estimación devuelta por estimate(input); forma libre."
+    },
+    "confirm_effective": {
+      "enum": ["none", "card", "strong"],
+      "description": "Confirmación efectiva decidida por el servidor (puede escalar card→strong por umbral de coste, §2)."
+    },
+    "state": {
+      "enum": [
+        "proposed",
+        "modified",
+        "accepted",
+        "discarded",
+        "expired",
+        "applied",
+        "reverted"
+      ]
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "supersedes": {
+      "anyOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }]
+    },
+    "plan_id": {
+      "anyOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }]
+    },
+    "step": {
+      "anyOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+    },
+    "change_id": {
+      "anyOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "type": "null" }]
+    },
+    "org_id": { "$ref": "#/$defs/nonEmptyString" },
+    "user_id": { "$ref": "#/$defs/nonEmptyString" },
+    "thread_id": { "$ref": "#/$defs/nonEmptyString" }
+  }
+}

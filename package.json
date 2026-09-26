@@ -21,6 +21,9 @@
     "packages/agent-chat-core/dist",
     "packages/agent-chat-react/dist",
     "packages/agent-chat-adapter-acv2/dist",
+    "packages/agent-chat-contract/dist",
+    "packages/agent-chat-contract/schema",
+    "packages/agent-chat-contract/fixtures",
     "README.md",
     "LICENSE",
     "NOTICE",
@@ -54,6 +57,16 @@
       "types": "./packages/agent-chat-adapter-acv2/dist/index.d.ts",
       "import": "./packages/agent-chat-adapter-acv2/dist/index.js",
       "default": "./packages/agent-chat-adapter-acv2/dist/index.js"
+    },
+    "./contract": {
+      "types": "./packages/agent-chat-contract/dist/index.d.ts",
+      "import": "./packages/agent-chat-contract/dist/index.js",
+      "default": "./packages/agent-chat-contract/dist/index.js"
+    },
+    "./contract/*": {
+      "types": "./packages/agent-chat-contract/dist/*.d.ts",
+      "import": "./packages/agent-chat-contract/dist/*.js",
+      "default": "./packages/agent-chat-contract/dist/*.js"
     }
   },
   "scripts": {

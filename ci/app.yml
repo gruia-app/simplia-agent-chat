@@ -1,0 +1,37 @@
+app_key: simplia-agent-chat
+repo: https://github.com/gruia-app/simplia-agent-chat.git
+repo_owner: gruia-app
+default_branch: main
+
+stack:
+  type: [node, pnpm, monorepo]
+
+ci:
+  # Los bloques son independientes: lint es stdlib-only (release-policy), typecheck
+  # es tsc -p por paquete y test es node --test sobre dist compilado + los gates
+  # estructurales del repo (pack/dist/consumer). Ninguno escribe sobre los inputs
+  # de los otros (cada uno trabaja sobre el mismo workspace ya instalado).
+  parallel_checks: true
+
+paths:
+  root: .
+
+commands:
+  install:
+    # packageManager: pnpm@9.0.0; los workers traen corepack con Node 20+.
+    - corepack enable && corepack prepare pnpm@9.0.0 --activate
+    - pnpm install --frozen-lockfile
+  lint:
+    # El repo no tiene eslint/prettier: su guardiana estructural es el test de
+    # release-policy (dist importable, exports correctos, private:true).
+    - node --test scripts/release-policy.test.mjs
+  typecheck:
+    - pnpm run typecheck
+  test:
+    # Suite por paquete (node --test sobre dist/) más los gates de paquete:
+    # pack (contenido del tarball), dist (dist commiteado == src compilado) y
+    # consumer smoke externo. Equivale a `pnpm check` de AGENTS.md.
+    - pnpm run test
+    - pnpm run pack:check
+    - pnpm run dist:check
+    - pnpm run test:consumer

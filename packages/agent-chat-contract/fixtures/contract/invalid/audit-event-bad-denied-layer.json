@@ -1,0 +1,24 @@
+{
+  "entity": "audit-event",
+  "document": {
+    "schema_version": 1,
+    "event_id": "evt-0001",
+    "ts": "2026-09-24T12:00:01Z",
+    "org_id": "org-qa-1",
+    "app_key": "insaidr",
+    "user_id": "user-qa-1",
+    "tool": "memoria.recordar",
+    "proposal_id": "3f2c1a9e-7b4d-4e5f-9a8b-1c2d3e4f5a6b",
+    "change_id": "chg-0001",
+    "payload_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "action": "applied",
+    "confirm_effective": "card",
+    "denied_layer": "middleware",
+    "cost_estimate": 0.0,
+    "cost_actual": 0.0,
+    "cost_unit": "credits",
+    "result": "ok",
+    "error_code": null
+  },
+  "expected_error": "schema:anyOf"
+}
