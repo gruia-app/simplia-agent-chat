@@ -8,7 +8,7 @@
 export type NonEmptyString = string
 
 /**
- * DERIVADO (pendiente de confirmación PLAT): la SPEC-CHAT-F1-R687 rev 2 nombra ViewEvent pero no lista sus campos. Este conjunto mínimo se deriva de M-CHAT-CENTRIC §1.1 («la selección actual de la vista clásica y los cambios manuales recientes, como eventos breves; no volcados completos») y §1.5 («lo editado en la vista llega al chat como evento»).
+ * SPEC-CHAT-F1-R687 rev 3. Eventos breves del contexto de la vista clásica: la selección actual y los cambios manuales recientes (M-CHAT-CENTRIC §1.1/§1.5). Nunca volcados completos.
  */
 export interface ViewEvent {
 event_id: NonEmptyString

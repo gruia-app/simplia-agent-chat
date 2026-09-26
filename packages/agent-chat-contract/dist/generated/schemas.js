@@ -158,7 +158,7 @@ export const CHANGE_RECORD_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://gruia.dev/schemas/agent-chat/change-record.schema.json",
     "title": "ChangeRecord",
-    "description": "DERIVADO (pendiente de confirmación PLAT): la SPEC-CHAT-F1-R687 rev 2 nombra ChangeRecord pero no lista sus campos. Este conjunto mínimo se deriva de §3/§4: apply → change_id, revert/compensate sobre change_id dentro de undo.window_s, y del enlace con AuditEvent §6 (proposal_id, payload_hash, cost_actual).",
+    "description": "SPEC-CHAT-F1-R687 rev 3. Registro del cambio aplicado: apply → change_id (§3), revert/compensate sobre change_id dentro de undo.window_s (§3/§4), enlace con AuditEvent §6 (proposal_id, payload_hash, cost_actual, cost_unit).",
     "type": "object",
     "additionalProperties": false,
     "required": [
@@ -174,7 +174,8 @@ export const CHANGE_RECORD_SCHEMA = {
         "undo_mode",
         "undo_window_s",
         "undone_at",
-        "cost_actual"
+        "cost_actual",
+        "cost_unit"
     ],
     "$defs": {
         "uuid": {
@@ -258,6 +259,20 @@ export const CHANGE_RECORD_SCHEMA = {
                 }
             ],
             "description": "Coste real del apply, para el cost_actual de AuditEvent (§6)."
+        },
+        "cost_unit": {
+            "anyOf": [
+                {
+                    "enum": [
+                        "credits",
+                        "money_cents"
+                    ]
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Unidad del coste, coherente con AuditEvent §6. Null si no hubo coste."
         }
     }
 };
@@ -504,7 +519,7 @@ export const VIEW_EVENT_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://gruia.dev/schemas/agent-chat/view-event.schema.json",
     "title": "ViewEvent",
-    "description": "DERIVADO (pendiente de confirmación PLAT): la SPEC-CHAT-F1-R687 rev 2 nombra ViewEvent pero no lista sus campos. Este conjunto mínimo se deriva de M-CHAT-CENTRIC §1.1 («la selección actual de la vista clásica y los cambios manuales recientes, como eventos breves; no volcados completos») y §1.5 («lo editado en la vista llega al chat como evento»).",
+    "description": "SPEC-CHAT-F1-R687 rev 3. Eventos breves del contexto de la vista clásica: la selección actual y los cambios manuales recientes (M-CHAT-CENTRIC §1.1/§1.5). Nunca volcados completos.",
     "type": "object",
     "additionalProperties": false,
     "required": [

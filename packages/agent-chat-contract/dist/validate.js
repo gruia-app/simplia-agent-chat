@@ -77,11 +77,32 @@ export function validateToolSpec(document) {
         return schemaErrors;
     return validateToolSpecRules(document);
 }
-/** Valida una entidad; para "tool-spec" incluye las reglas cruzadas de §2. */
+/**
+ * Reglas cruzadas de ChangeRecord (SPEC rev 3): si hay coste real
+ * (`cost_actual` numérico), la unidad no puede ser null.
+ */
+export function validateChangeRecordRules(record) {
+    const errors = [];
+    if (typeof record.cost_actual === "number" && record.cost_unit === null) {
+        errors.push({
+            code: "cost_actual_requires_cost_unit",
+            message: "cost_actual requires a non-null cost_unit",
+            instancePath: "/cost_unit",
+        });
+    }
+    return errors;
+}
+/** Valida una entidad; tool-spec y change-record incluyen reglas cruzadas. */
 export function validateContractDocument(entity, document) {
     if (entity === "tool-spec")
         return validateToolSpec(document);
-    return validateEntity(entity, document);
+    const schemaErrors = validateEntity(entity, document);
+    if (schemaErrors.length > 0)
+        return schemaErrors;
+    if (entity === "change-record") {
+        return validateChangeRecordRules(document);
+    }
+    return [];
 }
 /** Lanza ContractValidationError si el documento no cumple el contrato. */
 export function assertContractDocument(entity, document) {

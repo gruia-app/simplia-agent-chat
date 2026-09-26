@@ -19,9 +19,9 @@ Fuente única de verdad del contrato chat-céntrico (**SPEC-CHAT-F1-R687 rev 2**
 - `irreversible` ⇒ `undo.mode` `none` o `compensate` (`irreversible_forbids_undo_revert`)
 - `cost.kind` distinto de `none` ⇒ `cost.estimator=true` (`cost_kind_requires_estimator`)
 
-## Derivados pendientes de confirmación PLAT
+## Regla cruzada de ChangeRecord (SPEC rev 3)
 
-La SPEC rev 2 nombra `ChangeRecord` y `ViewEvent` pero no lista sus campos. Los esquemas llevan el conjunto mínimo derivado de §3/§4 (ChangeRecord) y M-CHAT-CENTRIC §1.1/§1.5 (ViewEvent), marcado con `DERIVADO` en la `description` del esquema.
+- `cost_actual` numérico ⇒ `cost_unit` no null (`cost_actual_requires_cost_unit`)
 
 ## Uso
 

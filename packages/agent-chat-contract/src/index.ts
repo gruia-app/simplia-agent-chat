@@ -3,6 +3,7 @@ export {
   ContractValidationError,
   assertContractDocument,
   validateContractDocument,
+  validateChangeRecordRules,
   validateEntity,
   validateToolSpec,
   validateToolSpecRules,

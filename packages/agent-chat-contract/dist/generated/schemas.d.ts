@@ -102,10 +102,10 @@ export declare const CHANGE_RECORD_SCHEMA: {
     readonly $schema: "https://json-schema.org/draft/2020-12/schema";
     readonly $id: "https://gruia.dev/schemas/agent-chat/change-record.schema.json";
     readonly title: "ChangeRecord";
-    readonly description: "DERIVADO (pendiente de confirmación PLAT): la SPEC-CHAT-F1-R687 rev 2 nombra ChangeRecord pero no lista sus campos. Este conjunto mínimo se deriva de §3/§4: apply → change_id, revert/compensate sobre change_id dentro de undo.window_s, y del enlace con AuditEvent §6 (proposal_id, payload_hash, cost_actual).";
+    readonly description: "SPEC-CHAT-F1-R687 rev 3. Registro del cambio aplicado: apply → change_id (§3), revert/compensate sobre change_id dentro de undo.window_s (§3/§4), enlace con AuditEvent §6 (proposal_id, payload_hash, cost_actual, cost_unit).";
     readonly type: "object";
     readonly additionalProperties: false;
-    readonly required: readonly ["change_id", "proposal_id", "tool", "app_key", "org_id", "user_id", "payload_hash", "applied_at", "state", "undo_mode", "undo_window_s", "undone_at", "cost_actual"];
+    readonly required: readonly ["change_id", "proposal_id", "tool", "app_key", "org_id", "user_id", "payload_hash", "applied_at", "state", "undo_mode", "undo_window_s", "undone_at", "cost_actual", "cost_unit"];
     readonly $defs: {
         readonly uuid: {
             readonly type: "string";
@@ -174,6 +174,14 @@ export declare const CHANGE_RECORD_SCHEMA: {
                 readonly type: "null";
             }];
             readonly description: "Coste real del apply, para el cost_actual de AuditEvent (§6).";
+        };
+        readonly cost_unit: {
+            readonly anyOf: readonly [{
+                readonly enum: readonly ["credits", "money_cents"];
+            }, {
+                readonly type: "null";
+            }];
+            readonly description: "Unidad del coste, coherente con AuditEvent §6. Null si no hubo coste.";
         };
     };
 };
@@ -346,7 +354,7 @@ export declare const VIEW_EVENT_SCHEMA: {
     readonly $schema: "https://json-schema.org/draft/2020-12/schema";
     readonly $id: "https://gruia.dev/schemas/agent-chat/view-event.schema.json";
     readonly title: "ViewEvent";
-    readonly description: "DERIVADO (pendiente de confirmación PLAT): la SPEC-CHAT-F1-R687 rev 2 nombra ViewEvent pero no lista sus campos. Este conjunto mínimo se deriva de M-CHAT-CENTRIC §1.1 («la selección actual de la vista clásica y los cambios manuales recientes, como eventos breves; no volcados completos») y §1.5 («lo editado en la vista llega al chat como evento»).";
+    readonly description: "SPEC-CHAT-F1-R687 rev 3. Eventos breves del contexto de la vista clásica: la selección actual y los cambios manuales recientes (M-CHAT-CENTRIC §1.1/§1.5). Nunca volcados completos.";
     readonly type: "object";
     readonly additionalProperties: false;
     readonly required: readonly ["event_id", "ts", "kind", "view", "target", "summary", "thread_id", "org_id", "user_id"];
@@ -495,10 +503,10 @@ export declare const SCHEMAS: {
         readonly $schema: "https://json-schema.org/draft/2020-12/schema";
         readonly $id: "https://gruia.dev/schemas/agent-chat/change-record.schema.json";
         readonly title: "ChangeRecord";
-        readonly description: "DERIVADO (pendiente de confirmación PLAT): la SPEC-CHAT-F1-R687 rev 2 nombra ChangeRecord pero no lista sus campos. Este conjunto mínimo se deriva de §3/§4: apply → change_id, revert/compensate sobre change_id dentro de undo.window_s, y del enlace con AuditEvent §6 (proposal_id, payload_hash, cost_actual).";
+        readonly description: "SPEC-CHAT-F1-R687 rev 3. Registro del cambio aplicado: apply → change_id (§3), revert/compensate sobre change_id dentro de undo.window_s (§3/§4), enlace con AuditEvent §6 (proposal_id, payload_hash, cost_actual, cost_unit).";
         readonly type: "object";
         readonly additionalProperties: false;
-        readonly required: readonly ["change_id", "proposal_id", "tool", "app_key", "org_id", "user_id", "payload_hash", "applied_at", "state", "undo_mode", "undo_window_s", "undone_at", "cost_actual"];
+        readonly required: readonly ["change_id", "proposal_id", "tool", "app_key", "org_id", "user_id", "payload_hash", "applied_at", "state", "undo_mode", "undo_window_s", "undone_at", "cost_actual", "cost_unit"];
         readonly $defs: {
             readonly uuid: {
                 readonly type: "string";
@@ -567,6 +575,14 @@ export declare const SCHEMAS: {
                     readonly type: "null";
                 }];
                 readonly description: "Coste real del apply, para el cost_actual de AuditEvent (§6).";
+            };
+            readonly cost_unit: {
+                readonly anyOf: readonly [{
+                    readonly enum: readonly ["credits", "money_cents"];
+                }, {
+                    readonly type: "null";
+                }];
+                readonly description: "Unidad del coste, coherente con AuditEvent §6. Null si no hubo coste.";
             };
         };
     };
@@ -736,7 +752,7 @@ export declare const SCHEMAS: {
         readonly $schema: "https://json-schema.org/draft/2020-12/schema";
         readonly $id: "https://gruia.dev/schemas/agent-chat/view-event.schema.json";
         readonly title: "ViewEvent";
-        readonly description: "DERIVADO (pendiente de confirmación PLAT): la SPEC-CHAT-F1-R687 rev 2 nombra ViewEvent pero no lista sus campos. Este conjunto mínimo se deriva de M-CHAT-CENTRIC §1.1 («la selección actual de la vista clásica y los cambios manuales recientes, como eventos breves; no volcados completos») y §1.5 («lo editado en la vista llega al chat como evento»).";
+        readonly description: "SPEC-CHAT-F1-R687 rev 3. Eventos breves del contexto de la vista clásica: la selección actual y los cambios manuales recientes (M-CHAT-CENTRIC §1.1/§1.5). Nunca volcados completos.";
         readonly type: "object";
         readonly additionalProperties: false;
         readonly required: readonly ["event_id", "ts", "kind", "view", "target", "summary", "thread_id", "org_id", "user_id"];

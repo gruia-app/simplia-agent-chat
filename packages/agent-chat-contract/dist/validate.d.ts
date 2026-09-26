@@ -40,7 +40,16 @@ interface ToolSpecShape {
 export declare function validateToolSpecRules(spec: ToolSpecShape): ContractError[];
 /** Esquema + reglas cruzadas de §2 para una ToolSpec. */
 export declare function validateToolSpec(document: unknown): ContractError[];
-/** Valida una entidad; para "tool-spec" incluye las reglas cruzadas de §2. */
+interface ChangeRecordShape {
+    cost_actual?: unknown;
+    cost_unit?: unknown;
+}
+/**
+ * Reglas cruzadas de ChangeRecord (SPEC rev 3): si hay coste real
+ * (`cost_actual` numérico), la unidad no puede ser null.
+ */
+export declare function validateChangeRecordRules(record: ChangeRecordShape): ContractError[];
+/** Valida una entidad; tool-spec y change-record incluyen reglas cruzadas. */
 export declare function validateContractDocument(entity: ContractEntity, document: unknown): ContractError[];
 /** Lanza ContractValidationError si el documento no cumple el contrato. */
 export declare function assertContractDocument<E extends ContractEntity>(entity: E, document: unknown): asserts document is ContractEntityTypes[E];

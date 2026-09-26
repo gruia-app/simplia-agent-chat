@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gruia.dev/schemas/agent-chat/change-record.schema.json",
   "title": "ChangeRecord",
-  "description": "DERIVADO (pendiente de confirmación PLAT): la SPEC-CHAT-F1-R687 rev 2 nombra ChangeRecord pero no lista sus campos. Este conjunto mínimo se deriva de §3/§4: apply → change_id, revert/compensate sobre change_id dentro de undo.window_s, y del enlace con AuditEvent §6 (proposal_id, payload_hash, cost_actual).",
+  "description": "SPEC-CHAT-F1-R687 rev 3. Registro del cambio aplicado: apply → change_id (§3), revert/compensate sobre change_id dentro de undo.window_s (§3/§4), enlace con AuditEvent §6 (proposal_id, payload_hash, cost_actual, cost_unit).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,7 +18,8 @@
     "undo_mode",
     "undo_window_s",
     "undone_at",
-    "cost_actual"
+    "cost_actual",
+    "cost_unit"
   ],
   "$defs": {
     "uuid": {
@@ -68,6 +69,10 @@
     "cost_actual": {
       "anyOf": [{ "type": "number" }, { "type": "null" }],
       "description": "Coste real del apply, para el cost_actual de AuditEvent (§6)."
+    },
+    "cost_unit": {
+      "anyOf": [{ "enum": ["credits", "money_cents"] }, { "type": "null" }],
+      "description": "Unidad del coste, coherente con AuditEvent §6. Null si no hubo coste."
     }
   }
 }

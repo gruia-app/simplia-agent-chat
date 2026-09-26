@@ -9,7 +9,7 @@ export type NonEmptyString = string
 export type Uuid = string
 
 /**
- * DERIVADO (pendiente de confirmación PLAT): la SPEC-CHAT-F1-R687 rev 2 nombra ChangeRecord pero no lista sus campos. Este conjunto mínimo se deriva de §3/§4: apply → change_id, revert/compensate sobre change_id dentro de undo.window_s, y del enlace con AuditEvent §6 (proposal_id, payload_hash, cost_actual).
+ * SPEC-CHAT-F1-R687 rev 3. Registro del cambio aplicado: apply → change_id (§3), revert/compensate sobre change_id dentro de undo.window_s (§3/§4), enlace con AuditEvent §6 (proposal_id, payload_hash, cost_actual, cost_unit).
  */
 export interface ChangeRecord {
 change_id: NonEmptyString
@@ -37,4 +37,8 @@ undone_at: (string | null)
  * Coste real del apply, para el cost_actual de AuditEvent (§6).
  */
 cost_actual: (number | null)
+/**
+ * Unidad del coste, coherente con AuditEvent §6. Null si no hubo coste.
+ */
+cost_unit: (("credits" | "money_cents") | null)
 }
