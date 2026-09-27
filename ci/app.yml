@@ -1,0 +1,38 @@
+app_key: simplia_agent_chat
+repo: https://github.com/gruia-app/simplia-agent-chat.git
+repo_owner: gruia-app
+default_branch: main
+
+stack:
+  type: [node, monorepo]
+
+paths:
+  root: .
+
+commands:
+  install:
+    - corepack enable && pnpm install --frozen-lockfile
+  lint: []
+  typecheck: []
+  test:
+    # Replaces .github/workflows/ci.yml job `verify` (pnpm check ==
+    # typecheck + tests + release-policy + pack/dist + external consumer
+    # smoke). GitHub ran it on a node 20/22 matrix; the Jenkins worker
+    # toolchain provides a single current Node (engines allow >=20).
+    - pnpm check
+    # Replaces ci.yml job `git-consumer`: installs this repo as a git
+    # dependency pinned to the commit under test (public repo, no auth).
+    - SIMPLIA_AGENT_CHAT_GIT_REF="${GIT_COMMIT}" pnpm run test:git-consumer
+  build:
+    - pnpm run build
+  e2e: []
+
+deploy:
+  type: none
+
+health: {}
+
+security:
+  trivy: false
+
+secrets: {}
