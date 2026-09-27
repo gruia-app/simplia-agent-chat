@@ -35,3 +35,11 @@ commands:
     - pnpm run pack:check
     - pnpm run dist:check
     - pnpm run test:consumer
+
+# Manifiesto mínimo exigido por ManifestValidator (R687-JOBSHA): la librería
+# declara las rutas pero no despliega ni publica healthchecks.
+deploy:
+  type: none
+health:
+  staging: []
+  production: []
