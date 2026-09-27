@@ -22,7 +22,23 @@ commands:
     - pnpm check
     # Replaces ci.yml job `git-consumer`: installs this repo as a git
     # dependency pinned to the commit under test (public repo, no auth).
-    - SIMPLIA_AGENT_CHAT_GIT_REF="${GIT_COMMIT}" pnpm run test:git-consumer
+    # The ref must be the PR head SHA, not whatever commit the checkout
+    # resolved: GIT_COMMIT can be a synthesized merge commit on jobs that
+    # test merge refs (merge-gate), which would make the smoke test a
+    # commit nobody can consume. On PR builds (CHANGE_ID set) we resolve
+    # the authoritative head via the public GitHub API; on plain branch
+    # builds GIT_COMMIT is already the head.
+    - |
+      set -eu
+      ref="${GIT_COMMIT}"
+      if [ -n "${CHANGE_ID:-}" ]; then
+        head_sha="$(curl -fsS "https://api.github.com/repos/gruia-app/simplia-agent-chat/pulls/${CHANGE_ID}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["head"]["sha"])')"
+        if [ "$head_sha" != "$ref" ]; then
+          echo "checkout is $ref; pinning git-consumer to PR head $head_sha"
+          ref="$head_sha"
+        fi
+      fi
+      SIMPLIA_AGENT_CHAT_GIT_REF="$ref" pnpm run test:git-consumer
   build:
     - pnpm run build
   e2e: []
