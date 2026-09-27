@@ -79,6 +79,7 @@
     "dist:check": "node scripts/dist-check.mjs",
     "pack:check": "node scripts/pack-check.mjs",
     "check": "pnpm run typecheck && pnpm run test && pnpm run test:release-policy && pnpm run pack:check && pnpm run dist:check && pnpm run test:consumer",
+    "qa:demo": "node examples/chat-centric-demo/scripts/run-qa.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release:check": "pnpm run check"

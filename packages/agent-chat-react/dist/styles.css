@@ -679,6 +679,38 @@
 .sac-button-primary { border-color: var(--sac-color-accent-border); background: var(--sac-color-accent-emphasis); color: var(--sac-color-accent-contrast); }
 .sac-button-primary:hover:not(:disabled) { border-color: var(--sac-color-accent-soft); background: var(--sac-color-accent-border); }
 
+/* F1 proposal surfaces inherit the host theme and keep controls touch-friendly. */
+.sac-f1-log, .sac-f1-card, .sac-f1-panel, .sac-f1-toast, .sac-f1-dialog {
+  color: var(--sac-color-text);
+  font-family: var(--sac-font-body, system-ui, sans-serif);
+}
+.sac-f1-message { padding: .6rem 0; border-bottom: 1px solid var(--sac-color-border); }
+.sac-f1-message p { margin: .25rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sac-f1-card, .sac-f1-panel { padding: 1rem; border: 1px solid var(--sac-color-border); border-radius: var(--sac-radius-control, .4rem); background: var(--sac-color-surface); }
+.sac-f1-card h3, .sac-f1-panel h2, .sac-f1-dialog h2 { margin: 0 0 .65rem; color: var(--sac-color-text-strong); }
+.sac-f1-meta, .sac-f1-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.sac-f1-meta { margin-bottom: .75rem; }
+.sac-f1-chip { padding: .2rem .5rem; border: 1px solid var(--sac-color-border-strong); border-radius: 1rem; font-size: .82rem; }
+.sac-f1-diff { display: grid; gap: .5rem; margin: .75rem 0; }
+.sac-f1-diff > div { display: grid; gap: .2rem; }
+.sac-f1-diff del, .sac-f1-diff ins { display: block; padding: .35rem .5rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sac-f1-diff del { color: var(--sac-color-danger-fg); background: color-mix(in srgb, currentColor 9%, transparent); }
+.sac-f1-diff ins { color: var(--sac-color-success-fg); background: color-mix(in srgb, currentColor 9%, transparent); text-decoration: none; }
+.sac-f1-actions { margin-top: .75rem; }
+.sac-f1-actions .sac-button, .sac-f1-toast .sac-button { min-height: 32px; font-size: .875rem; }
+.sac-f1-card :is(button, input):focus-visible, .sac-f1-dialog :is(button, input):focus-visible, .sac-f1-toast button:focus-visible { outline: 2px solid var(--sac-color-focus); outline-offset: 2px; }
+.sac-f1-dialog-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 1rem; background: rgb(0 0 0 / .7); }
+.sac-f1-dialog { width: min(100%, 32rem); padding: 1.5rem; border: 1px solid var(--sac-color-border-strong); border-radius: .5rem; background: var(--sac-color-surface-elevated); box-shadow: 0 1rem 3rem rgb(0 0 0 / .25); }
+.sac-f1-dialog label { display: flex; align-items: center; gap: .65rem; min-height: 32px; }
+.sac-f1-dialog input { width: 1.25rem; height: 1.25rem; }
+.sac-f1-toast { display: flex; align-items: center; gap: .75rem; padding: .65rem 1rem; border: 1px solid var(--sac-color-border-strong); background: var(--sac-color-surface-elevated); }
+.sac-f1-steps { padding-left: 1.5rem; }
+.sac-f1-steps li { margin: .5rem 0; }
+.sac-f1-steps li span { color: var(--sac-color-text-muted); }
+.sac-f1-steps .sac-button { min-height: 32px; margin-left: .6rem; }
+@media (max-width: 600px) { .sac-f1-actions .sac-button, .sac-f1-toast .sac-button, .sac-f1-dialog label, .sac-f1-steps .sac-button { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .sac-f1-card *, .sac-f1-dialog *, .sac-f1-toast * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
 .sac-provider-picker {
   display: flex;
   min-width: 0;

@@ -15,6 +15,14 @@ import "simplia-agent-chat/react/styles.css";
 
 React 18.2 and React 19 are supported through peer dependencies.
 
+## Proposal components
+
+`ChatLog` displays message items in a polite live log. Streaming text stays out of the accessibility tree until the completed message is inserted. `ProposalCard` accepts a contract `Proposal`, a trusted `StructuredDiff`, and optional formatted cost and effect labels. It never renders raw `proposal.preview`, `proposal.estimate`, or `proposal.input`. The host owns Accept, Modify, Discard, and Undo callbacks and must obtain any server tokens itself.
+
+For strong confirmation, open `IrreversibleDialog` from the host's Accept handler. It focuses the required acknowledgement checkbox, traps Tab, and restores focus when closed. `UndoToast` and the card's applied Undo button are shown only while the host supplied undo deadline remains open. Pass the authoritative `ChangeRecord` fields to `UndoToast`; the server still enforces the actual window.
+
+`PlanSteps` takes steps with an optional proposal on each step and calls `onAcceptStep(step, proposal)` for only that step. The host must open strong confirmation when the proposal requires it. `MemoryPanel` and `BYOPanel` render the core view models. The BYO panel shows only provider, status, and optional last four characters; key entry and mutation belong to the consuming application. Import `@simplia/agent-chat-react/styles.css` for focus, target size, and reduced motion styling.
+
 ## Run status and interrupt
 
 `selectThreadRunState` is derived from protocol entities. `onInterrupt(turn)` only requests a stop. The shell never mutates `ChatState` and never labels a turn cancelled or interrupted until a protocol event says so. Double requests for the same active turn are ignored while submitting or submitted. A rejected request unlocks retry and shows `interruptError` without exception text. Stop stays separate from Send and appears only when an active turn and `onInterrupt` both exist.

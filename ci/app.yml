@@ -36,6 +36,8 @@ commands:
     - pnpm run pack:check
     - pnpm run dist:check
     - pnpm run test:consumer
+    - pnpm --dir examples/chat-centric-demo build
+    - pnpm qa:demo
 
 # Manifiesto mínimo exigido por ManifestValidator (R687-JOBSHA): la librería
 # declara las rutas pero no despliega ni publica healthchecks.
