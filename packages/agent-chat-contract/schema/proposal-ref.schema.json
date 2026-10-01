@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gruia.dev/schemas/agent-chat/proposal-ref.schema.json",
+  "title": "ProposalRef",
+  "description": "SPEC-CHAT-F1-R687 rev 4/5 §9.2: structuredContent que devuelve una herramienta de escritura proyectada a MCP. review_url lleva SOLO el proposal_id, nunca un token.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "proposal_id",
+    "tool",
+    "diff",
+    "estimate",
+    "confirm_effective",
+    "effect",
+    "expires_at",
+    "review_url"
+  ],
+  "properties": {
+    "proposal_id": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "tool": { "type": "string", "minLength": 1 },
+    "diff": { "description": "Diff estructurado (preview) sin efectos." },
+    "estimate": {
+      "anyOf": [{ "type": "object" }, { "type": "number" }, { "type": "null" }]
+    },
+    "confirm_effective": { "enum": ["none", "card", "strong"] },
+    "effect": { "enum": ["read", "reversible", "irreversible"] },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "review_url": { "type": "string", "minLength": 1 }
+  }
+}

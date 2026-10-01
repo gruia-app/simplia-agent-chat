@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gruia.dev/schemas/agent-chat/change-record.schema.json",
+  "title": "ChangeRecord",
+  "description": "SPEC-CHAT-F1-R687 rev 3. Registro del cambio aplicado: apply → change_id (§3), revert/compensate sobre change_id dentro de undo.window_s (§3/§4), enlace con AuditEvent §6 (proposal_id, payload_hash, cost_actual, cost_unit).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "change_id",
+    "proposal_id",
+    "tool",
+    "app_key",
+    "org_id",
+    "user_id",
+    "payload_hash",
+    "applied_at",
+    "state",
+    "undo_mode",
+    "undo_window_s",
+    "undone_at",
+    "cost_actual",
+    "cost_unit"
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "properties": {
+    "change_id": { "$ref": "#/$defs/nonEmptyString" },
+    "proposal_id": { "$ref": "#/$defs/uuid" },
+    "tool": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"
+    },
+    "app_key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 64
+    },
+    "org_id": { "$ref": "#/$defs/nonEmptyString" },
+    "user_id": { "$ref": "#/$defs/nonEmptyString" },
+    "payload_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "applied_at": { "type": "string", "format": "date-time" },
+    "state": {
+      "enum": ["applied", "reverted", "compensated"]
+    },
+    "undo_mode": {
+      "enum": ["revert", "compensate", "none"],
+      "description": "Copia del ToolSpec.undo.mode vigente al aplicar."
+    },
+    "undo_window_s": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Copia del ToolSpec.undo.window_s; revert solo es válido dentro de esta ventana (§3)."
+    },
+    "undone_at": {
+      "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }],
+      "description": "Marca de tiempo del revert/compensate, o null si el cambio sigue aplicado."
+    },
+    "cost_actual": {
+      "anyOf": [{ "type": "number" }, { "type": "null" }],
+      "description": "Coste real del apply, para el cost_actual de AuditEvent (§6)."
+    },
+    "cost_unit": {
+      "anyOf": [{ "enum": ["credits", "money_cents"] }, { "type": "null" }],
+      "description": "Unidad del coste, coherente con AuditEvent §6. Null si no hubo coste."
+    }
+  }
+}

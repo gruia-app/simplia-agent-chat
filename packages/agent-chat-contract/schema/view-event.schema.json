@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gruia.dev/schemas/agent-chat/view-event.schema.json",
+  "title": "ViewEvent",
+  "description": "SPEC-CHAT-F1-R687 rev 3. Eventos breves del contexto de la vista clásica: la selección actual y los cambios manuales recientes (M-CHAT-CENTRIC §1.1/§1.5). Nunca volcados completos.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "ts",
+    "kind",
+    "view",
+    "target",
+    "summary",
+    "thread_id",
+    "org_id",
+    "user_id"
+  ],
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "properties": {
+    "event_id": { "$ref": "#/$defs/nonEmptyString" },
+    "ts": { "type": "string", "format": "date-time" },
+    "kind": {
+      "enum": ["selection", "manual_edit"],
+      "description": "selection = selección actual de la vista clásica; manual_edit = cambio manual reciente (M §1.1, §1.5)."
+    },
+    "view": {
+      "$ref": "#/$defs/nonEmptyString",
+      "description": "Identificador de la vista clásica que emite el evento."
+    },
+    "target": {
+      "anyOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "type": "null" }],
+      "description": "Elemento afectado dentro de la vista (p. ej. «paso 2»), o null."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "Descripción breve para el contexto del modelo («has cambiado el asunto del paso 2»). Nunca un volcado completo."
+    },
+    "thread_id": { "$ref": "#/$defs/nonEmptyString" },
+    "org_id": { "$ref": "#/$defs/nonEmptyString" },
+    "user_id": { "$ref": "#/$defs/nonEmptyString" }
+  }
+}

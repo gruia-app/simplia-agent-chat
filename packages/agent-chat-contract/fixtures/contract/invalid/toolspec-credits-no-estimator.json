@@ -1,0 +1,31 @@
+{
+  "entity": "tool-spec",
+  "document": {
+    "name": "memoria.recordar",
+    "description": "Recuerda un dato del usuario en el panel Memoria.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "dato": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "dato"
+      ]
+    },
+    "effect": "reversible",
+    "cost": {
+      "kind": "credits",
+      "estimator": false
+    },
+    "confirm": "card",
+    "undo": {
+      "mode": "revert",
+      "window_s": 3600,
+      "grace_s": 0
+    },
+    "app_key": "insaidr"
+  },
+  "expected_error": "cost_kind_requires_estimator"
+}

@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gruia.dev/schemas/agent-chat/audit-event.schema.json",
+  "title": "AuditEvent",
+  "description": "SPEC-CHAT-F1-R687 rev 2 §6 (contrato con PLAT, F2). No incluye input, preview ni contenido.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "ts",
+    "org_id",
+    "app_key",
+    "user_id",
+    "tool",
+    "proposal_id",
+    "change_id",
+    "payload_hash",
+    "action",
+    "via",
+    "client_id",
+    "client_verified",
+    "confirm_channel",
+    "confirm_effective",
+    "denied_layer",
+    "cost_estimate",
+    "cost_actual",
+    "cost_unit",
+    "result",
+    "error_code"
+  ],
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "properties": {
+    "schema_version": { "const": 1 },
+    "event_id": {
+      "$ref": "#/$defs/nonEmptyString",
+      "description": "Id de deduplicación para entrega at-least-once (§6)."
+    },
+    "ts": { "type": "string", "format": "date-time" },
+    "org_id": { "$ref": "#/$defs/nonEmptyString" },
+    "app_key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 64
+    },
+    "user_id": { "$ref": "#/$defs/nonEmptyString" },
+    "tool": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"
+    },
+    "proposal_id": { "$ref": "#/$defs/nonEmptyString" },
+    "change_id": {
+      "anyOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "type": "null" }]
+    },
+    "payload_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "action": {
+      "enum": [
+        "proposed",
+        "accepted",
+        "applied",
+        "reverted",
+        "compensated",
+        "discarded",
+        "expired",
+        "denied"
+      ]
+    },
+    "via": {
+      "enum": ["ui", "mcp", "cli"],
+      "description": "SPEC rev 4 §9.6: canal por el que llegó la acción."
+    },
+    "client_id": {
+      "anyOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "type": "null" }],
+      "description": "Client_id OAuth del cliente MCP/CLI (null en vía ui)."
+    },
+    "client_verified": {
+      "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+      "description": "Si el client_id está en la allowlist de clientes verificados."
+    },
+    "confirm_channel": {
+      "anyOf": [
+        { "enum": ["ui", "review_url", "elicitation", "cli_tty"] },
+        { "type": "null" }
+      ],
+      "description": "Canal por el que el usuario confirmó (null si no hubo confirmación)."
+    },
+    "confirm_effective": {
+      "enum": ["none", "card", "strong"]
+    },
+    "denied_layer": {
+      "anyOf": [
+        { "enum": ["entitlement", "role", "policy", "token"] },
+        { "type": "null" }
+      ]
+    },
+    "cost_estimate": { "type": "number" },
+    "cost_actual": {
+      "anyOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "cost_unit": {
+      "enum": ["credits", "money_cents"]
+    },
+    "result": {
+      "enum": ["ok", "error"]
+    },
+    "error_code": {
+      "anyOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "type": "null" }]
+    }
+  }
+}

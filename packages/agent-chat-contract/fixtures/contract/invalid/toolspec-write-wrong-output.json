@@ -1,0 +1,39 @@
+{
+  "entity": "tool-spec",
+  "document": {
+    "name": "memoria.recordar",
+    "description": "Guarda un hecho en memoria",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "fact": {
+          "type": "string"
+        }
+      }
+    },
+    "effect": "reversible",
+    "cost": {
+      "kind": "none",
+      "estimator": false
+    },
+    "confirm": "card",
+    "undo": {
+      "mode": "revert",
+      "window_s": 300,
+      "grace_s": 0
+    },
+    "app_key": "insaidr",
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ]
+    }
+  },
+  "expected_error": "write_requires_proposal_ref_output"
+}
