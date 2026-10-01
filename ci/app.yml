@@ -11,7 +11,11 @@ paths:
 
 commands:
   install:
-    - corepack enable && pnpm install --frozen-lockfile
+    # Jenkins workers run as an unprivileged user: plain `corepack enable`
+    # tries to write pnpm shims next to the node binary and fails EACCES.
+    # Bootstrap into $HOME/.bin like the other ecosystem manifests, then
+    # activate the packageManager-pinned pnpm (9.0.0) explicitly.
+    - export COREPACK_HOME=$HOME/.corepack && mkdir -p $HOME/.bin $HOME/.corepack && corepack enable --install-directory $HOME/.bin && export PATH=$HOME/.bin:$PATH && corepack prepare pnpm@9.0.0 --activate && pnpm install --frozen-lockfile
   lint: []
   typecheck: []
   test:
@@ -19,7 +23,7 @@ commands:
     # typecheck + tests + release-policy + pack/dist + external consumer
     # smoke). GitHub ran it on a node 20/22 matrix; the Jenkins worker
     # toolchain provides a single current Node (engines allow >=20).
-    - pnpm check
+    - export PATH=$HOME/.bin:$PATH && pnpm check
     # Replaces ci.yml job `git-consumer`: installs this repo as a git
     # dependency pinned to the commit under test (public repo, no auth).
     # The ref must be the PR head SHA, not whatever commit the checkout
@@ -30,6 +34,7 @@ commands:
     # builds GIT_COMMIT is already the head.
     - |
       set -eu
+      export PATH="$HOME/.bin:$PATH"
       ref="${GIT_COMMIT}"
       if [ -n "${CHANGE_ID:-}" ]; then
         head_sha="$(curl -fsS "https://api.github.com/repos/gruia-app/simplia-agent-chat/pulls/${CHANGE_ID}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["head"]["sha"])')"
@@ -40,7 +45,7 @@ commands:
       fi
       SIMPLIA_AGENT_CHAT_GIT_REF="$ref" pnpm run test:git-consumer
   build:
-    - pnpm run build
+    - export PATH=$HOME/.bin:$PATH && pnpm run build
   e2e: []
 
 deploy:
