@@ -22,6 +22,7 @@ export * from "./interrupt.js";
 export * from "./LimitNotice.js";
 export * from "./PendingInteractions.js";
 export * from "./ProviderAccountPicker.js";
+export * from "./ProposalComponents.js";
 export * from "./SuggestionChips.js";
 export * from "./surface-registry.js";
 export * from "./use-follow-scroll.js";
