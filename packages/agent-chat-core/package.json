@@ -8,7 +8,12 @@
   "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist", "README.md", "LICENSE", "NOTICE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -63,16 +68,28 @@
   },
   "homepage": "https://github.com/gruia-app/simplia-agent-chat#readme",
   "bugs": "https://github.com/gruia-app/simplia-agent-chat/issues",
-  "keywords": ["agent", "chat", "codex", "langchain", "openrouter", "sse", "typescript"],
+  "keywords": [
+    "agent",
+    "chat",
+    "codex",
+    "langchain",
+    "openrouter",
+    "sse",
+    "typescript"
+  ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "build": "node ./node_modules/typescript/bin/tsc -p tsconfig.json",
     "typecheck": "node ./node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
-    "test": "pnpm run build && node --test"
+    "test": "pnpm run build && node --test",
+    "test:coverage": "pnpm run build && node scripts/check-contract-coverage.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@simplia/agent-chat-contract": "workspace:^"
   }
 }

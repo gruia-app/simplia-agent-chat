@@ -83,6 +83,10 @@ importers:
         version: 5.9.3
 
   packages/agent-chat-core:
+    dependencies:
+      '@simplia/agent-chat-contract':
+        specifier: workspace:^
+        version: link:../agent-chat-contract
     devDependencies:
       typescript:
         specifier: ^5.6.3

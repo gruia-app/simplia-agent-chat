@@ -32,6 +32,7 @@ commands:
     # pack (contenido del tarball), dist (dist commiteado == src compilado) y
     # consumer smoke externo. Equivale a `pnpm check` de AGENTS.md.
     - pnpm run test
+    - pnpm --filter @simplia/agent-chat-core run test:coverage
     - pnpm run pack:check
     - pnpm run dist:check
     - pnpm run test:consumer
