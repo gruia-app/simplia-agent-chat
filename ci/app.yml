@@ -1,0 +1,38 @@
+app_key: simplia_agent_chat
+repo: https://github.com/gruia-app/simplia-agent-chat.git
+repo_owner: gruia-app
+default_branch: main
+
+stack:
+  type: [node]
+
+paths:
+  root: .
+
+commands:
+  install:
+    - corepack enable
+    - corepack prepare pnpm@9.0.0 --activate
+    - pnpm install --frozen-lockfile
+  lint: []
+  typecheck: []
+  test:
+    - pnpm check
+  build: []
+  e2e: []
+
+# The repo's GitHub workflows verify and create signed GitHub releases. They do
+# not deploy a running application; consumers pin reviewed Git commits.
+# Jenkins shared-library source is pinned in Jenkinsfile to
+# simplia-ci@68ecac795b21d6c06294dd6ffa78b9da40ac95f4.
+deploy:
+  type: none
+
+health:
+  staging: []
+  production: []
+
+security:
+  trivy: true
+  severity: "HIGH,CRITICAL"
+  fail_on_vulnerability: true
