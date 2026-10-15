@@ -18,13 +18,14 @@ commands:
   typecheck: []
   test:
     - pnpm check
+    - pnpm run test:git-consumer
   build: []
   e2e: []
 
 # The repo's GitHub workflows verify and create signed GitHub releases. They do
 # not deploy a running application; consumers pin reviewed Git commits.
 # Jenkins shared-library source is pinned in Jenkinsfile to
-# simplia-ci@68ecac795b21d6c06294dd6ffa78b9da40ac95f4.
+# simplia-ci@5e321c8df9b6d30976aa1b9ef1824191b5f0db53.
 deploy:
   type: none
 
