@@ -9,6 +9,10 @@ stack:
 paths:
   root: .
 
+ci:
+  heavy_tests:
+    enabled: true
+
 commands:
   install:
     - corepack enable
