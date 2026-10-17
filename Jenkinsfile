@@ -1,3 +1,3 @@
-@Library('simplia-ci@5e321c8df9b6d30976aa1b9ef1824191b5f0db53') _
+@Library('simplia-ci@c5d0854cfd25e3afecba7f51d39229bcd3f45ac8') _
 
 simpliaPipeline()

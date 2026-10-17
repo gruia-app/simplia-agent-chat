@@ -22,20 +22,43 @@ if (result.status !== 0) {
   process.exit(result.status ?? 1);
 }
 
-function parsePackJson(output) {
-  const trimmed = output.trim();
-  let cursor = trimmed.lastIndexOf("[");
-  while (cursor >= 0) {
-    try {
-      return JSON.parse(trimmed.slice(cursor));
-    } catch {
-      cursor = trimmed.lastIndexOf("[", cursor - 1);
+function parsePackJson(...outputs) {
+  for (const output of outputs) {
+    // npm or its launcher may surround the JSON with log lines or use stderr.
+    // Walk forward so malformed arrays at offset zero cannot cause a retry loop.
+    for (let start = output.indexOf("["); start >= 0; start = output.indexOf("[", start + 1)) {
+      let depth = 0;
+      let quoted = false;
+      let escaped = false;
+      for (let end = start; end < output.length; end += 1) {
+        const char = output[end];
+        if (quoted) {
+          if (escaped) escaped = false;
+          else if (char === "\\") escaped = true;
+          else if (char === '\"') quoted = false;
+          continue;
+        }
+        if (char === '\"') quoted = true;
+        else if (char === "[") depth += 1;
+        else if (char === "]" && --depth === 0) {
+          try {
+            const manifests = JSON.parse(output.slice(start, end + 1));
+            if (manifests.length === 1 && Array.isArray(manifests[0]?.files)
+                && manifests[0].files.every((entry) => typeof entry?.path === "string")) {
+              return manifests;
+            }
+          } catch {
+            // Continue looking for a complete npm manifest, never accept log arrays.
+          }
+          break;
+        }
+      }
     }
   }
   throw new Error("npm pack did not emit a JSON manifest");
 }
 
-const [manifest] = parsePackJson(result.stdout);
+const [manifest] = parsePackJson(result.stdout, result.stderr);
 const files = new Set(manifest.files.map((entry) => entry.path));
 const required = [
   "LICENSE",
