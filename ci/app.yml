@@ -25,7 +25,18 @@ commands:
   test:
     - node --test --test-concurrency=1 scripts/pack-check.test.mjs
     - pnpm check
-    - pnpm run test:git-consumer
+    # Install the published source head; synthetic merge commits stay local to Jenkins.
+    - |
+      SIMPLIA_AGENT_CHAT_GIT_REF="$(node -e '
+        const { identity } = JSON.parse(require("node:fs").readFileSync(".simplia-ci/effective-manifest.json", "utf8"));
+        const tested = require("node:child_process").execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+        if (identity.tested_sha !== tested) throw new Error("git_consumer_checkout_identity_mismatch");
+        const revision = identity.head_sha ?? (!process.env.CHANGE_ID && !identity.identity_source ? identity.tested_sha : null);
+        if (!/^[0-9a-f]{40}$/i.test(revision ?? "")) throw new Error("git_consumer_published_head_missing");
+        process.stdout.write(revision);
+      ')" &&
+      export SIMPLIA_AGENT_CHAT_GIT_REF &&
+      pnpm run test:git-consumer
   build: []
   e2e: []
 
