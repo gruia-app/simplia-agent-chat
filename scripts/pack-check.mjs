@@ -24,6 +24,19 @@ if (result.status !== 0) {
 
 function parsePackJson(...outputs) {
   for (const output of outputs) {
+    // npm 12 keys pack JSON by package name; npm 10/11 emit an array.
+    try {
+      const packed = JSON.parse(output);
+      if (packed && !Array.isArray(packed) && typeof packed === "object") {
+        const manifests = Object.values(packed);
+        if (manifests.length === 1 && Array.isArray(manifests[0]?.files)
+            && manifests[0].files.every((entry) => typeof entry?.path === "string")) {
+          return manifests;
+        }
+      }
+    } catch {
+      // The legacy array parser below also handles surrounding launcher logs.
+    }
     // npm or its launcher may surround the JSON with log lines or use stderr.
     // Walk forward so malformed arrays at offset zero cannot cause a retry loop.
     for (let start = output.indexOf("["); start >= 0; start = output.indexOf("[", start + 1)) {

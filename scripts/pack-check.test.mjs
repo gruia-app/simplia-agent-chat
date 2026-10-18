@@ -26,3 +26,14 @@ for (const output of ["", "[invalid", "[]", "[{}]", '[{"files":[{}]}]', `${json}
     assert.throws(() => parse(output, ""), /npm pack did not emit a JSON manifest/);
   });
 }
+
+// npm v12 pack.js keys logTar output by tar.name, rather than numeric index.
+test("npm12 package-name keyed pack manifest", () => {
+  const pack = { ["@scope/fixture"]: manifest[0] };
+  assert.equal(JSON.stringify(parse(JSON.stringify(pack), "")), JSON.stringify(manifest));
+});
+
+test("rejects multiple npm12 package manifests", () => {
+  const pack = { first: manifest[0], second: manifest[0] };
+  assert.throws(() => parse(JSON.stringify(pack), ""), /npm pack did not emit a JSON manifest/);
+});
