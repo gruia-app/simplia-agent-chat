@@ -23,7 +23,7 @@ Never add credentials, customer data, internal URLs or production fixtures. Brow
 <!-- ACV2:JENKINS-LANES:START -->
 ## Jenkins: prioridad y gasto
 
-- **CI canónico = Jenkins** en ACV2 y apps del ecosistema. Los checks de GitHub Actions (spending limit, jobs no arrancados, feature-gate de cuenta) **no** son gate operativo ni residual de misión; no los trates como bloqueantes. Detalle: [docs/agents/JENKINS.md](./docs/agents/JENKINS.md).
+- **CI canÃ³nico = Jenkins** en ACV2 y apps del ecosistema. Los checks de GitHub Actions (spending limit, jobs no arrancados, feature-gate de cuenta) **no** son gate operativo ni residual de misiÃ³n; no los trates como bloqueantes. Detalle: [docs/agents/JENKINS.md](./docs/agents/JENKINS.md).
 
 - Al crear un pull request, publicalo siempre como ready for review; no lo abras como draft.
 - Por defecto usa la via ordinaria: PRs y ramas esperan 120 segundos; la rama por defecto espera 600 segundos para agrupar merges y deploys antes de asignar un worker.
@@ -33,7 +33,7 @@ Never add credentials, customer data, internal URLs or production fixtures. Brow
 - Las flotas `ordinary`, `urgent` y `xlarge` mantienen scale-to-zero. No solicites para ellas nodos calientes, warm leases ni prewarming; la via rapida conserva el cold start si no hay capacidad.
 - Unicamente `simplia-priority-execution`, declarado por Roberto y vigente en el ledger server-side, puede usar el pool Jenkins aislado `priority-verification`: 1 CCX33 caliente y hasta 2 bursts de 2 horas, con retirada tras 15 minutos ociosos. Solo verification/deploy, nunca agentes. Requiere excepcion de politica + library/pin desplegados y readback, SHA exacto, alerta EUR 8 y proyeccion all-in rolling-24h <= EUR 10; por encima exige nueva aprobacion durable de Roberto. Si falta cualquier prueba, warm=0 y fail closed. No modifica las otras flotas.
 - Merge de emergencia en cualquier repo gruia-app (CI atascado y `gh pr merge --admin` rechazado por enforce_admins): usa solo `acv2 pr merge override --repository gruia-app/<repo> --base-branch main|master --pr-number N --head-sha SHA --base-sha SHA --reason "..." --idempotency-key KEY` (skill `acv2-pr-merge-override`). Exige sesion de dispositivo aprobada, capability de un solo uso y SHAs exactos; restaura enforce_admins al terminar. No sirve con Jenkins en verde ni para saltarse un fallo de codigo, y no lo sustituyas por cambios manuales de la proteccion de rama.
-- Camino rapido (CAMINO-RAPIDO-1910): si Roberto dice "rapido" o "urgente" en su peticion, pon la etiqueta `fast` en la PR (`gh pr edit N --add-label fast`). El pipeline tambien trata como fast los cambios de hasta 50 lineas sin migraciones, permisos, secretos ni ficheros de CI y lo publica como `simplia/fast-lane`. En fast la PR solo pasa lint, tipos, unitarios, build y seguridad; los e2e corren despues del merge en la rama por defecto y, si fallan, se revierte y se avisa. La etiqueta `fast` no equivale a `lane=urgent` ni salta gates.
+- Camino rapido (CAMINO-RAPIDO-1910): si Roberto dice "rapido" o "urgente" en su peticion, pon la etiqueta ast en la PR (gh pr edit N --add-label fast). El pipeline tambien trata como fast los cambios de hasta 50 lineas sin migraciones, permisos, secretos ni ficheros de CI y lo publica como simplia/fast-lane. En fast la PR solo pasa lint, tipos, unitarios, build y seguridad; los e2e corren despues del merge en la rama por defecto y, si fallan, se revierte y se avisa. La etiqueta ast no equivale a lane=urgent ni salta gates.
 - No marques automaticamente el trabajo de Codex como urgente ni uses el tamano pequeno del PR, titulo, labels o autor como senal suficiente.
 <!-- ACV2:JENKINS-LANES:END -->
 
@@ -41,7 +41,7 @@ Never add credentials, customer data, internal URLs or production fixtures. Brow
 ## Eficiencia de tokens y delegacion
 
 - El agente principal de la sesion es coordinador: define objetivo, prioriza, decide y verifica. No investiga ni implementa por si mismo lo que pueda delegar.
-- Delega con la skill `llm-delegate` (`scripts/delegate_workflow.py`): Luna (`gpt-5.6-luna`) para investigacion, busqueda, resumenes, clasificacion y revision rutinaria; Grok 4.6 (`grok-4.6`, fallback Terra `gpt-5.6-terra`) para fixes acotados con tests en worktree aislado; Sol (`gpt-5.6-sol`) solo para arquitectura, ambiguedad o adjudicacion; GLM Flash via Pi para lo mecanico. Lanza Codex con la cuenta que tenga cuota (`CODEX_HOME`).
+- Delega con la skill `llm-delegate` (`scripts/delegate_workflow.py`): Luna (`gpt-6-luna`) para investigacion, busqueda, resumenes, clasificacion y revision rutinaria; Grok 4.6 (`grok-4.6`, fallback Terra `gpt-6.1-terra`) para fixes acotados con tests en worktree aislado; Sol (`gpt-6.2-sol`) solo para arquitectura, ambiguedad o adjudicacion; GLM Flash via Pi para lo mecanico. Lanza Codex con la cuenta que tenga cuota (`CODEX_HOME`).
 - El coordinador retiene secretos, hosts remotos, cambios en produccion, decisiones irreversibles y la verificacion final de artefactos, diffs, tests y efectos externos. Un workflow completado no autoriza commit, push, merge, deploy ni envios.
 - No leas docs, runbooks, skills, diffs completos, logs ni artefactos enteros al contexto principal: pide a una hoja Luna un resumen acotado o el veredicto con evidencia. Lecturas directas solo por rango o grep con `head`/`cut`.
 - Contexto delegado acotado; no pases el historial completo por defecto. Cada hoja recibe solo su prompt cerrado, las entradas necesarias y el contrato de salida.
@@ -55,3 +55,17 @@ Never add credentials, customer data, internal URLs or production fixtures. Brow
 - Trabajo simple y acotado: usa el modelo capaz mas barato y el razonamiento minimo suficiente. Evidencia concisa; no pegues logs, trazas ni salidas completas.
 - Contabiliza solo deltas propios de generacion/turno; no atribuyas totales acumulados del padre. Cache y reasoning se registran aparte del output generado.
 <!-- ACV2:TOKEN-EFFICIENCY:END -->
+
+<!-- ACV2:COMPLETION-PROTOCOL:START -->
+## Protocolo de finalizaciÃ³n de proyectos
+
+- Antes de ejecutar, recupera la peticiÃ³n original y registra objetivo, entregable, alcance aprobado, exclusiones, dependencias, criterios de aceptaciÃ³n, responsable y evidencias esperadas. Separa validaciones automÃ¡ticas y humanas.
+- Conserva el ID de tarea/proyecto, repositorio, versiÃ³n de alcance, PR, SHA exacto probado, entorno, resultado de pruebas, evidencia funcional/visual, validador y fecha. Cada bloqueo incluye causa, responsable y condiciÃ³n de desbloqueo.
+- Usa el cierre canÃ³nico de la aplicaciÃ³n. DONE tÃ©cnico exige los criterios aplicables y la integraciÃ³n autorizada; una PR abierta o un informe del agente no acreditan el cierre.
+- VERIFIED exige pruebas verificables de todos los criterios obligatorios aplicables. DEPLOYED exige comprobar la identidad del cambio disponible en el entorno objetivo. LAUNCH_READY exige recorrer la experiencia completa sin ayuda del desarrollador.
+- LAUNCHED exige publicaciÃ³n real y los mecanismos definidos de captaciÃ³n, soporte y mediciÃ³n. BUSINESS_VALIDATED exige los umbrales comerciales previamente acordados. Una prueba tÃ©cnica no demuestra demanda.
+- BLOCKED conserva la fase alcanzada. Si una evidencia obligatoria falta, falla, caduca o pertenece a otro SHA, entorno o versiÃ³n de alcance, conserva el bloqueo y seÃ±ala la siguiente acciÃ³n.
+- Cierra cada hito con su alcance aprobado. Registra ampliaciones como otra tarea o solicitud de cambio; el lanzamiento completo no es requisito para cerrar un hito de diseÃ±o o una landing.
+- En el readback muestra criterios verificados/total, bloqueos, quÃ© falta, agente responsable y decisiones que necesita Roberto. No marques una verificaciÃ³n propuesta como realizada.
+- El contrato compartido es completion_contract, versiÃ³n gruia.completion.v1. Workspace conserva la madurez de producto; los estados nativos de Task, Feature y run mantienen su significado. Antes de publicar nombres, marcas, cifras o capturas de un cliente, adjunta su autorizaciÃ³n para esos materiales y canales.
+<!-- ACV2:COMPLETION-PROTOCOL:END -->
